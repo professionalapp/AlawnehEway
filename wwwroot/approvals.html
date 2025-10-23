@@ -52,7 +52,7 @@
         }
     </style>
     <script>
-        const API_BASE_URL = 'http://localhost:5216';
+        const API_BASE_URL = window.location.origin;
         async function loadPending() {
             const res = await fetch(`${API_BASE_URL}/remittances/change-requests?status=1`);
             const list = res.ok ? await res.json() : [];

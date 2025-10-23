@@ -1,5 +1,5 @@
 // متغيرات عامة
-const API_BASE_URL = 'http://localhost:5216';
+const API_BASE_URL = window.location.origin;
 let users = [];
 
 // تهيئة التطبيق عند تحميل الصفحة
