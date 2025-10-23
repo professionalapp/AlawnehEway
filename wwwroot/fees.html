@@ -1,0 +1,324 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>شرائح العمولات - Alawneh-Eway</title>
+    <link rel="stylesheet" href="css/style.css">
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
+    <script src="js/countries.js"></script>
+    <style>
+        /* استايل مستنسخ من صفحة أسعار الصرف */
+        .card-modern {
+            background: white;
+            border-radius: 15px;
+            padding: 25px;
+            margin-bottom: 25px;
+            box-shadow: 0 5px 20px rgba(0, 0, 0, 0.08);
+        }
+        .card-modern h2 {
+            color: #333;
+            font-size: 20px;
+            margin-bottom: 20px;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            border-bottom: 3px solid #007bff;
+            padding-bottom: 10px;
+        }
+        .form-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+            gap: 15px;
+            margin-bottom: 15px;
+        }
+        .form-group-modern {
+            display: flex;
+            flex-direction: column;
+            margin-bottom: 10px;
+        }
+        .form-group-modern label {
+            font-size: 13px;
+            font-weight: 600;
+            color: #007bff;
+            margin-bottom: 6px;
+            display: flex;
+            align-items: center;
+            gap: 5px;
+        }
+        .form-group-modern input,
+        .form-group-modern select {
+            padding: 10px 12px;
+            border: 2px solid rgba(0, 123, 255, 0.3);
+            border-radius: 8px;
+            font-size: 14px;
+            transition: all 0.3s;
+            background: rgba(255,255,255,0.95);
+        }
+        .form-group-modern input:focus,
+        .form-group-modern select:focus {
+            border-color: #007bff;
+            box-shadow: 0 0 0 3px rgba(0,123,255,0.15);
+            outline: none;
+        }
+        .btn-modern {
+            padding: 10px 20px;
+            border-radius: 8px;
+            font-size: 14px;
+            font-weight: 600;
+            transition: all 0.3s;
+            border: none;
+            cursor: pointer;
+            display: inline-flex;
+            align-items: center;
+            gap: 8px;
+        }
+        .btn-primary-modern {
+            background: linear-gradient(135deg, #007bff 0%, #0056b3 100%);
+            color: white;
+            box-shadow: 0 4px 15px rgba(0, 123, 255, 0.4);
+        }
+        .btn-primary-modern:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 6px 20px rgba(0, 123, 255, 0.6);
+        }
+        .btn-secondary-modern {
+            background: #6c757d;
+            color: white;
+        }
+        .btn-secondary-modern:hover {
+            background: #5a6268;
+            transform: translateY(-2px);
+        }
+        .table-modern {
+            width: 100%;
+            border-collapse: separate;
+            border-spacing: 0;
+            font-size: 13px;
+            background: white;
+            border-radius: 10px;
+            overflow: hidden;
+            box-shadow: 0 2px 10px rgba(0, 0, 0, 0.08);
+        }
+        .table-modern thead {
+            background: linear-gradient(135deg, #007bff 0%, #0056b3 100%);
+        }
+        .table-modern thead th {
+            padding: 12px 10px;
+            text-align: center;
+            color: #ffffff;
+            font-weight: 600;
+            font-size: 13px;
+            border: none;
+        }
+        .table-modern tbody tr {
+            transition: all 0.2s;
+            border-bottom: 1px solid #f0f0f0;
+        }
+        .table-modern tbody tr:hover {
+            background: #f8f9ff;
+            transform: scale(1.01);
+            box-shadow: 0 2px 8px rgba(0, 123, 255, 0.1);
+        }
+        .table-modern tbody td {
+            padding: 10px 8px;
+            text-align: center;
+            font-size: 12px;
+            color: #333;
+        }
+        .table-modern tbody td:first-child {
+            font-weight: 600;
+            color: #007bff;
+        }
+        .empty-state {
+            text-align: center;
+            padding: 30px;
+            color: #6c757d;
+            font-size: 14px;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <header class="header">
+            <div style="display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap;">
+                <div class="logo">
+                    <i class="fas fa-layer-group"></i>
+                    <h1>إدارة شرائح العمولات</h1>
+                </div>
+                <a href="index.html" style="color: #ffffff; text-decoration: none; font-size: 16px; display: flex; align-items: center; gap: 6px; transition: opacity 0.3s;">
+                    <i class="fas fa-home"></i>
+                    <span>العودة للصفحة الرئيسية</span>
+                </a>
+            </div>
+            <p class="subtitle">تعريف الشرائح لكل دولة مع منع التداخل</p>
+        </header>
+
+        <main class="main-content">
+            <div class="card-modern">
+                <h2><i class="fas fa-plus-circle"></i> إضافة/تعديل شريحة</h2>
+                <form id="tierForm">
+                    <div class="form-grid">
+                        <div class="form-group-modern">
+                            <label><i class="fas fa-globe"></i> الدولة</label>
+                            <select id="country" required></select>
+                        </div>
+                        <div class="form-group-modern">
+                            <label><i class="fas fa-arrow-down"></i> من مبلغ (د.أ)</label>
+                            <input id="min" type="number" step="0.01" min="0" required>
+                        </div>
+                        <div class="form-group-modern">
+                            <label><i class="fas fa-arrow-up"></i> إلى مبلغ (د.أ) - اتركه فارغاً للشريحة المفتوحة</label>
+                            <input id="max" type="number" step="0.01" min="0">
+                        </div>
+                        <div class="form-group-modern">
+                            <label><i class="fas fa-coins"></i> العمولة (د.أ)</label>
+                            <input id="fee" type="number" step="0.01" min="0" required>
+                        </div>
+                    </div>
+                    <div style="display: flex; gap: 10px; margin-top: 10px;">
+                        <button type="submit" class="btn-modern btn-primary-modern"><i class="fas fa-save"></i> حفظ</button>
+                        <button type="button" class="btn-modern btn-secondary-modern" onclick="resetForm()"><i class="fas fa-undo"></i> إعادة تعيين</button>
+                    </div>
+                </form>
+            </div>
+
+            <div class="card-modern">
+                <h2><i class="fas fa-list"></i> الشرائح</h2>
+                <div class="form-group-modern" style="max-width:220px;">
+                    <label><i class="fas fa-filter"></i> تصفية حسب الدولة</label>
+                    <select id="filterCountry"></select>
+                </div>
+                <div class="table-container">
+                    <table class="table-modern">
+                        <thead>
+                            <tr>
+                                <th>#</th>
+                                <th><i class="fas fa-globe"></i> الدولة</th>
+                                <th><i class="fas fa-arrow-down"></i> من</th>
+                                <th><i class="fas fa-arrow-up"></i> إلى</th>
+                                <th><i class="fas fa-coins"></i> العمولة</th>
+                                <th><i class="fas fa-cog"></i> الإجراءات</th>
+                            </tr>
+                        </thead>
+                        <tbody id="tiersTable">
+                            <tr><td colspan="6" class="empty-state">جاري التحميل...</td></tr>
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </main>
+
+        <footer class="footer">
+            <p> نظام Alawneh-Eway. جميع الحقوق محفوظة. &copy; 2025</p>
+        </footer>
+    </div>
+
+    <script>
+        const API_BASE_URL = 'http://localhost:5216';
+        let editingId = null;
+
+        document.addEventListener('DOMContentLoaded', () => {
+            populateCountryDropdown('country', true);
+            populateCountryDropdown('filterCountry', true, true);
+            loadTiers();
+            document.getElementById('filterCountry').addEventListener('change', loadTiers);
+        });
+
+        async function loadTiers() {
+            const filterCountry = document.getElementById('filterCountry').value;
+            const url = filterCountry ? `${API_BASE_URL}/fee-tiers?country=${encodeURIComponent(filterCountry)}` : `${API_BASE_URL}/fee-tiers`;
+            try {
+                const res = await fetch(url);
+                if (!res.ok) throw new Error('فشل في تحميل الشرائح');
+                const list = await res.json();
+                renderTiers(list);
+            } catch (e) {
+                document.getElementById('tiersTable').innerHTML = '<tr><td colspan="6" class="empty-state">خطأ في تحميل البيانات</td></tr>';
+            }
+        }
+
+        function renderTiers(list) {
+            const tbody = document.getElementById('tiersTable');
+            if (!list.length) { tbody.innerHTML = '<tr><td colspan="6" class="empty-state">لا توجد شرائح</td></tr>'; return; }
+            tbody.innerHTML = list.map((t, i) => `
+                <tr>
+                    <td>${i+1}</td>
+                    <td>${getCountryLabel(t.country)}</td>
+                    <td>${t.minAmount?.toFixed(2)}</td>
+                    <td>${t.maxAmount != null ? t.maxAmount.toFixed(2) : '—'}</td>
+                    <td>${t.fee.toFixed(2)}</td>
+                    <td>
+                        <button class="btn btn-sm btn-primary" onclick="editTier(${t.id})"><i class="fas fa-edit"></i></button>
+                        <button class="btn btn-sm btn-danger" onclick="deleteTier(${t.id})"><i class="fas fa-trash"></i></button>
+                    </td>
+                </tr>
+            `).join('');
+        }
+
+        document.getElementById('tierForm').addEventListener('submit', async (e) => {
+            e.preventDefault();
+            const country = document.getElementById('country').value.trim();
+            const minAmount = parseFloat(document.getElementById('min').value || '0');
+            const maxRaw = document.getElementById('max').value;
+            const maxAmount = maxRaw ? parseFloat(maxRaw) : null;
+            const fee = parseFloat(document.getElementById('fee').value || '0');
+            if (!country) { alert('يرجى اختيار الدولة'); return; }
+            if (isNaN(minAmount) || minAmount < 0) { alert('الحد الأدنى غير صالح'); return; }
+            if (maxAmount !== null && (isNaN(maxAmount) || maxAmount < minAmount)) { alert('الحد الأعلى غير صالح'); return; }
+            if (isNaN(fee) || fee < 0) { alert('العمولة غير صالحة'); return; }
+
+            const payload = { country, minAmount, maxAmount, fee };
+            try {
+                const url = editingId ? `${API_BASE_URL}/fee-tiers/${editingId}` : `${API_BASE_URL}/fee-tiers`;
+                const method = editingId ? 'PUT' : 'POST';
+                const res = await fetch(url, { method, headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(payload) });
+                if (!res.ok) {
+                    let msg = 'فشل الحفظ';
+                    try { const data = await res.json(); msg = data.message || data || msg; } catch {}
+                    throw new Error(msg);
+                }
+                alert(editingId ? 'تم تحديث الشريحة' : 'تم إضافة الشريحة');
+                resetForm();
+                loadTiers();
+            } catch (e) { alert(e.message); }
+        });
+
+        async function editTier(id) {
+            // حمّل القائمة ثم اختر الشريحة
+            const filterCountry = document.getElementById('filterCountry').value;
+            const url = filterCountry ? `${API_BASE_URL}/fee-tiers?country=${encodeURIComponent(filterCountry)}` : `${API_BASE_URL}/fee-tiers`;
+            const res = await fetch(url);
+            const list = res.ok ? await res.json() : [];
+            const t = list.find(x => x.id === id);
+            if (!t) { alert('الشريحة غير موجودة'); return; }
+            document.getElementById('country').value = t.country;
+            document.getElementById('min').value = t.minAmount;
+            document.getElementById('max').value = t.maxAmount ?? '';
+            document.getElementById('fee').value = t.fee;
+            editingId = id;
+        }
+
+        async function deleteTier(id) {
+            if (!confirm('تأكيد حذف الشريحة؟')) return;
+            const res = await fetch(`${API_BASE_URL}/fee-tiers/${id}`, { method: 'DELETE' });
+            if (!res.ok) { alert('فشل الحذف'); return; }
+            loadTiers();
+        }
+
+        function resetForm() {
+            editingId = null;
+            document.getElementById('tierForm').reset();
+        }
+
+        function escapeHtml(text) {
+            const div = document.createElement('div');
+            div.textContent = text ?? '';
+            return div.innerHTML;
+        }
+    </script>
+</body>
+</html>
+
+
+

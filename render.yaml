@@ -1,0 +1,12 @@
+services:
+  - type: web
+    name: alawneh-eway
+    env: dotnet
+    plan: free
+    buildCommand: dotnet publish -c Release -o ./publish
+    startCommand: cd ./publish && dotnet AlawnehEway.dll
+    envVars:
+      - key: ASPNETCORE_ENVIRONMENT
+        value: Production
+      - key: DB_PASSWORD
+        value: trp68y35f9

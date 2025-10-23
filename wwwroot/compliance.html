@@ -1,0 +1,62 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>التزام - إيقافات الحوالات</title>
+    <link rel="stylesheet" href="css/style.css">
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
+</head>
+<body>
+    <script>
+        (function() {
+            const isLoggedIn = localStorage.getItem('isLoggedIn') || sessionStorage.getItem('isLoggedIn');
+            if (isLoggedIn !== 'true') {
+                window.location.replace('login.html');
+            }
+        })();
+    </script>
+
+    <div class="container">
+        <header class="header">
+            <div class="card" style="margin-bottom: 20px; padding: 16px; display: flex; justify-content: space-between; align-items: center; gap: 12px;">
+                <div style="flex: 1;">
+                    <h2 style="margin: 0; color: #007bff;">دائرة الامتثال</h2>
+                </div>
+                <div style="display:flex; gap: 10px;">
+                    <a class="btn" href="index.html" style="background: linear-gradient(135deg, #007bff 0%, #0056b3 100%); color: white; border: none;"><i class="fas fa-home"></i> الرئيسية</a>
+                    <a class="btn" href="remittances_list.html" style="background: linear-gradient(135deg, #dc3545 0%, #c82333 100%); color: white; border: none;"><i class="fas fa-list"></i> قائمة الحوالات</a>
+                </div>
+            </div>
+        </header>
+
+        <main class="main-content">
+            <div class="card">
+                <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 12px;">
+                    <h3 style="margin: 0;">الحولات الموقوفه لدى دائرة الامتثال</h3>
+                    <div>
+                        <button id="refreshBtn" class="btn btn-primary"><i class="fas fa-rotate"></i> تحديث</button>
+                    </div>
+                </div>
+                <div id="thresholdInfo" style="margin-bottom: 10px; color: #6c757d;"></div>
+                <div id="holdsContainer"></div>
+            </div>
+        </main>
+    </div>
+
+    <script src="js/compliance.js"></script>
+    <script>
+        window.addEventListener('DOMContentLoaded', function() {
+            loadComplianceHolds();
+            document.getElementById('refreshBtn').addEventListener('click', loadComplianceHolds);
+        });
+    </script>
+</body>
+<!--
+ملاحظات:
+- يتم إظهار جميع الحوالات التي حالتها "Compliance Hold".
+- يمكن فك الإيقاف لإعادتها إلى "بانتظار الدفع" أو تنفيذ السداد مباشرة (Force Pay) مع اختيار الصندوق المستقبل.
+-->
+</html>
+
+

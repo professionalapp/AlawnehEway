@@ -1,0 +1,546 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>إرجاع/تعديل حوالة - Alawneh-Eway</title>
+    <link rel="stylesheet" href="css/style.css">
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
+    <style>
+        .form-row { display: grid; grid-template-columns: 2fr 1fr 1fr; gap: 10px; }
+        .details-card { background: transparent; color: #6c757d; padding: 20px; margin-top: 12px; }
+        .details-card div { margin-bottom: 8px; }
+        .details-card strong { color: #6c757d; }
+        .badge-status { padding: 4px 10px; font-weight: bold; color: #6c757d; display: inline-block; }
+        .badge-pending { color: #6c757d; }
+        .badge-paid { color: #6c757d; }
+        .badge-pending-approval { color: #6c757d; }
+        .grid-2 { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
+        .muted { color: #6c757d; }
+        
+        @keyframes slideIn {
+            from { transform: translateX(100%); opacity: 0; }
+            to { transform: translateX(0); opacity: 1; }
+        }
+        
+        @keyframes slideOut {
+            from { transform: translateX(0); opacity: 1; }
+            to { transform: translateX(100%); opacity: 0; }
+        }
+    </style>
+    <script>
+        const API_BASE_URL = 'http://localhost:5216';
+        let current = null;
+        let autoRefreshInterval = null;
+
+        // دوال الفاليديشن
+        function validateReferenceNumber(reference) {
+            if (!reference || reference.trim() === '') {
+                return 'الرقم المرجعي مطلوب';
+            }
+            if (!/^\d{13}$/.test(reference.trim())) {
+                return 'الرقم المرجعي يجب أن يكون 13 رقم';
+            }
+            return null;
+        }
+
+        function validateNumericField(value, fieldName) {
+            if (!value || value.trim() === '') {
+                return null; // اختياري
+            }
+            if (!/^\d+(\.\d+)?$/.test(value.trim())) {
+                return `${fieldName} يجب أن يحتوي على أرقام فقط`;
+            }
+            return null;
+        }
+
+        async function findByRef() {
+            const ref = document.getElementById('reference').value.trim();
+            
+            // فاليديشن الرقم المرجعي
+            const refError = validateReferenceNumber(ref);
+            if (refError) {
+                alert(refError);
+                render(null);
+                stopAutoRefresh();
+                return;
+            }
+            
+            const res = await fetch(`${API_BASE_URL}/remittances/by-ref/${encodeURIComponent(ref)}`);
+            if (!res.ok) { 
+                alert('لم يتم العثور على حوالة بهذا الرقم المرجعي'); 
+                render(null);
+                // إخفاء البطاقات عند عدم العثور على الحوالة
+                const returnCard = document.getElementById('returnCard');
+                const updateCard = document.getElementById('updateCard');
+                if (returnCard) returnCard.style.display = 'none';
+                if (updateCard) updateCard.style.display = 'none';
+                stopAutoRefresh();
+                return; 
+            }
+            const r = await res.json();
+            current = r; 
+            render(r);
+            
+            // بدء التحديث التلقائي إذا كانت الحوالة قيد الموافقة
+            if (r.status === 'Pending Approval') {
+                startAutoRefresh(ref);
+            } else {
+                stopAutoRefresh();
+            }
+            
+            // إظهار حقل الملاحظات إذا كانت الحوالة قابلة للطلبات
+            const notesField = document.getElementById('notes');
+            if (notesField && (r.status === 'Payment pending' || r.status === 'Pending Approval')) {
+                notesField.style.display = 'block';
+            }
+        }
+
+        // دالة لتحديث البيانات تلقائياً
+        async function refreshCurrentRemittance() {
+            if (!current || !current.reference) return;
+            
+            try {
+                const res = await fetch(`${API_BASE_URL}/remittances/by-ref/${encodeURIComponent(current.reference)}`);
+                if (res.ok) {
+                    const updatedRemittance = await res.json();
+                    const oldStatus = current.status;
+                    current = updatedRemittance;
+                    render(updatedRemittance);
+                    
+                    // إذا تغيرت الحالة من "قيد الموافقة" إلى "بانتظار الدفع"، توقف التحديث التلقائي
+                    if (oldStatus === 'Pending Approval' && updatedRemittance.status === 'Payment pending') {
+                        stopAutoRefresh();
+                        // إظهار إشعار للمستخدم
+                        showStatusChangeNotification('تم رفض الطلب', 'تم إرجاع الحوالة إلى حالة "بانتظار الدفع" ويمكن إرسال طلب جديد');
+                        
+                        // تحديث الأزرار لتعود لحالتها الأصلية
+                        updateButtonsBasedOnStatus('Payment pending');
+                    }
+                }
+            } catch (error) {
+                console.error('خطأ في تحديث البيانات:', error);
+            }
+        }
+
+        // بدء التحديث التلقائي
+        function startAutoRefresh(reference) {
+            stopAutoRefresh(); // توقف أي تحديث سابق
+            autoRefreshInterval = setInterval(refreshCurrentRemittance, 5000); // كل 5 ثوان
+        }
+
+        // إيقاف التحديث التلقائي
+        function stopAutoRefresh() {
+            if (autoRefreshInterval) {
+                clearInterval(autoRefreshInterval);
+                autoRefreshInterval = null;
+            }
+        }
+
+        // إظهار إشعار تغيير الحالة
+        function showStatusChangeNotification(title, message) {
+            // إنشاء إشعار بصري
+            const notification = document.createElement('div');
+            notification.style.cssText = `
+                position: fixed;
+                top: 20px;
+                right: 20px;
+                background: #d4edda;
+                color: #155724;
+                padding: 15px 20px;
+                border-radius: 8px;
+                border: 1px solid #c3e6cb;
+                box-shadow: 0 4px 6px rgba(0,0,0,0.1);
+                z-index: 1000;
+                max-width: 400px;
+                font-size: 14px;
+                animation: slideIn 0.3s ease-out;
+            `;
+            notification.innerHTML = `
+                <div style="display: flex; align-items: center; gap: 10px;">
+                    <i class="fas fa-info-circle" style="font-size: 18px;"></i>
+                    <div>
+                        <strong>${title}</strong><br>
+                        ${message}
+                    </div>
+                    <button onclick="this.parentElement.parentElement.remove()" style="background: none; border: none; color: #155724; cursor: pointer; font-size: 16px;">&times;</button>
+                </div>
+            `;
+            document.body.appendChild(notification);
+            
+            // إزالة الإشعار تلقائياً بعد 8 ثوان
+            setTimeout(() => {
+                if (notification.parentElement) {
+                    notification.style.animation = 'slideOut 0.3s ease-in';
+                    setTimeout(() => {
+                        if (notification.parentElement) {
+                            notification.remove();
+                        }
+                    }, 300);
+                }
+            }, 8000);
+        }
+
+        function render(r) {
+            const box = document.getElementById('details');
+            if (!r) { box.innerHTML = '<div style="color:#333">لا توجد بيانات</div>'; return; }
+
+            let statusBadgeClass = '';
+            let statusText = mapStatusToArabic(r.status);
+            if (r.status === 'Payment pending') {
+                statusBadgeClass = 'badge-pending';
+            } else if (r.status === 'Paid') {
+                statusBadgeClass = 'badge-paid';
+            } else if (r.status === 'Pending Approval') {
+                statusBadgeClass = 'badge-pending-approval';
+            }
+
+            box.innerHTML = `
+                <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 20px; margin-bottom: 20px;">
+                    <div style="padding-left: 15px;">
+                        <h3 style="color: #333; margin-bottom: 10px;"><i class="fas fa-info-circle"></i> معلومات الحوالة</h3>
+                        <div><strong>الرقم المرجعي:</strong> <span class="pill">${r.reference}</span></div>
+                        <div><strong>الحالة:</strong> <span class="badge-status ${statusBadgeClass}">${statusText}</span></div>
+                        <div class="muted"><strong>رقم الحوالة:</strong> #${r.id}</div>
+                        <div><strong>الدولة:</strong> ${r.country}</div>
+                        <div><strong>المبلغ:</strong> <b style="font-size: 1.2em;">${r.amount.toFixed(2)}</b> د.أ</div>
+                        <div><strong>العمولة:</strong> ${r.fee.toFixed(2)} د.أ</div>
+                        <div><strong>المبلغ الصافي:</strong> <b>${(r.amount - r.fee).toFixed(2)}</b> د.أ</div>
+                        <div><strong>السبب:</strong> ${r.reason || 'غير محدد'}</div>
+                        <div><strong>الغاية:</strong> ${r.purpose || 'غير محدد'}</div>
+                        <div><strong>تاريخ الإرسال:</strong> ${formatDate(r.createdAt)}</div>
+                        ${r.paidAt ? `<div><strong>تاريخ السحب:</strong> ${formatDate(r.paidAt)}</div>` : ''}
+                    </div>
+                    
+                    <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 15px;">
+                        <div style="padding: 15px; background: white;">
+                            <h4 style="color: #333; margin-bottom: 10px;"><i class="fas fa-user"></i> بيانات المرسل</h4>
+                            <div><strong>الاسم بالعربي:</strong> ${r.sender?.nameAr ?? 'غير محدد'}</div>
+                            <div><strong>الاسم بالإنجليزي:</strong> ${r.sender?.nameEn ?? 'غير محدد'}</div>
+                            <div><strong>الرقم الوطني:</strong> ${r.sender?.nationalId ?? 'غير محدد'}</div>
+                            <div><strong>رقم الهاتف:</strong> ${r.sender?.phoneNumber ?? 'غير محدد'}</div>
+                            <div><strong>تاريخ الميلاد:</strong> ${r.sender?.birthDate ? new Date(r.sender.birthDate).toLocaleDateString('ar-SA') : 'غير محدد'}</div>
+                            <div><strong>العنوان:</strong> ${r.sender?.address ?? 'غير محدد'}</div>
+                            <div><strong>النوع:</strong> ${r.sender?.type === 'Sender' ? 'مرسل' : r.sender?.type === 'Beneficiary' ? 'مستفيد' : 'كلاهما'}</div>
+                        </div>
+                        
+                        <div style="padding: 15px; background: white;">
+                            <h4 style="color: #333; margin-bottom: 10px;"><i class="fas fa-user-check"></i> بيانات المستفيد</h4>
+                            <div><strong>الاسم بالعربي:</strong> ${r.beneficiary?.nameAr ?? 'غير محدد'}</div>
+                            <div><strong>الاسم بالإنجليزي:</strong> ${r.beneficiary?.nameEn ?? 'غير محدد'}</div>
+                            <div><strong>الرقم الوطني:</strong> ${r.beneficiary?.nationalId ?? 'غير محدد'}</div>
+                            <div><strong>رقم الهاتف:</strong> ${r.beneficiary?.phoneNumber ?? 'غير محدد'}</div>
+                            <div><strong>تاريخ الميلاد:</strong> ${r.beneficiary?.birthDate ? new Date(r.beneficiary.birthDate).toLocaleDateString('ar-SA') : 'غير محدد'}</div>
+                            <div><strong>العنوان:</strong> ${r.beneficiary?.address ?? 'غير محدد'}</div>
+                            <div><strong>النوع:</strong> ${r.beneficiary?.type === 'Sender' ? 'مرسل' : r.beneficiary?.type === 'Beneficiary' ? 'مستفيد' : 'كلاهما'}</div>
+                        </div>
+                    </div>
+                </div>
+            `;
+            
+            // تحديث الأزرار بناءً على حالة الحوالة
+            updateButtonsBasedOnStatus(r.status);
+            
+            // إظهار زر التحديث إذا كانت هناك حوالة معروضة
+            const refreshBtn = document.getElementById('refreshBtn');
+            if (refreshBtn) {
+                refreshBtn.style.display = r ? 'block' : 'none';
+            }
+            
+            // تحديث حالة الحوالة المحلية
+            if (current) {
+                current.status = r.status;
+            }
+            
+            // إظهار/إخفاء بطاقات الإرجاع والتعديل بناءً على حالة الحوالة
+            const returnCard = document.getElementById('returnCard');
+            const updateCard = document.getElementById('updateCard');
+            
+            if (r && r.status === 'Payment pending') {
+                // إظهار البطاقات فقط إذا كانت الحوالة بانتظار الدفع
+                if (returnCard) returnCard.style.display = 'block';
+                if (updateCard) updateCard.style.display = 'block';
+            } else {
+                // إخفاء البطاقات إذا كانت الحوالة مدفوعة أو قيد الموافقة أو لا توجد بيانات
+                if (returnCard) returnCard.style.display = 'none';
+                if (updateCard) updateCard.style.display = 'none';
+            }
+        }
+
+        function updateButtonsBasedOnStatus(status) {
+            const returnButton = document.querySelector('button[onclick="requestReturn()"]') || 
+                                document.querySelector('button[onclick*="requestReturn"]');
+            const updateButton = document.querySelector('button[onclick="requestUpdate()"]') || 
+                                document.querySelector('button[onclick*="requestUpdate"]');
+            
+            if (status === 'Pending Approval') {
+                // إذا كانت الحوالة قيد الموافقة، غير زر الإرجاع
+                if (returnButton) {
+                    returnButton.innerHTML = '<i class="fas fa-check-circle"></i> تم إرسال الطلب';
+                    returnButton.className = 'btn btn-success';
+                    returnButton.disabled = true;
+                    returnButton.onclick = null;
+                }
+                if (updateButton) {
+                    updateButton.innerHTML = '<i class="fas fa-check-circle"></i> تم إرسال الطلب';
+                    updateButton.className = 'btn btn-success';
+                    updateButton.disabled = true;
+                    updateButton.onclick = null;
+                }
+            } else if (status === 'Paid') {
+                // إذا كانت الحوالة مدفوعة، عطل الأزرار
+                if (returnButton) {
+                    returnButton.innerHTML = '<i class="fas fa-ban"></i> غير متاح - مدفوعة';
+                    returnButton.className = 'btn btn-secondary';
+                    returnButton.disabled = true;
+                    returnButton.onclick = null;
+                }
+                if (updateButton) {
+                    updateButton.innerHTML = '<i class="fas fa-ban"></i> غير متاح - مدفوعة';
+                    updateButton.className = 'btn btn-secondary';
+                    updateButton.disabled = true;
+                    updateButton.onclick = null;
+                }
+            } else {
+                // إذا كانت الحوالة بانتظار الدفع، أعد الأزرار لحالتها الأصلية
+                if (returnButton) {
+                    returnButton.innerHTML = '<i class="fas fa-undo"></i> طلب إرجاع';
+                    returnButton.className = 'btn btn-warning';
+                    returnButton.disabled = false;
+                    returnButton.onclick = requestReturn;
+                }
+                if (updateButton) {
+                    updateButton.innerHTML = '<i class="fas fa-pen"></i> طلب تعديل';
+                    updateButton.className = 'btn btn-info';
+                    updateButton.disabled = false;
+                    updateButton.onclick = requestUpdate;
+                }
+            }
+        }
+
+        async function requestReturn() {
+            if (!current) { alert('ابحث عن حوالة أولاً'); return; }
+            
+            // تأكيد من المستخدم
+            if (!confirm('هل أنت متأكد من إرسال طلب إرجاع هذه الحوالة؟\n\nسيتم تغيير حالة الحوالة إلى "قيد الموافقة"')) {
+                return;
+            }
+            
+            const payload = { requestType: 1, notes: document.getElementById('notesReturn').value.trim() };
+            const res = await fetch(`${API_BASE_URL}/remittances/change-requests?reference=${encodeURIComponent(current.reference)}`, {
+                method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(payload)
+            });
+            if (!res.ok) { alert('فشل إنشاء طلب الإرجاع'); return; }
+            
+            // تحديث حالة الحوالة المحلية
+            current.status = 'Pending Approval';
+            
+            // تحديث الأزرار
+            updateButtonsBasedOnStatus('Pending Approval');
+            
+            // بدء التحديث التلقائي لمتابعة تغيير الحالة بعد اعتماد/رفض الطلب
+            if (current && current.reference) {
+                startAutoRefresh(current.reference);
+            }
+            
+            // رسالة تأكيد مع تفاصيل
+            alert('✅ تم إرسال طلب الإرجاع بنجاح!\n\n' +
+                  '📋 تفاصيل الطلب:\n' +
+                  `• الرقم المرجعي: ${current.reference}\n` +
+                  `• نوع الطلب: إرجاع الحوالة\n` +
+                  `• الحالة: قيد الموافقة\n` +
+                  `• تاريخ الإرسال: ${new Date().toLocaleString('ar-SA')}\n\n` +
+                  'سيتم مراجعة الطلب من قبل الإدارة قريباً.');
+        }
+
+        async function requestUpdate() {
+            if (!current) { alert('ابحث عن حوالة أولاً'); return; }
+            
+            // فاليديشن المبلغ إذا تم إدخاله
+            const amountValue = document.getElementById('amount').value;
+            if (amountValue) {
+                const amountError = validateNumericField(amountValue, 'المبلغ');
+                if (amountError) {
+                    alert(amountError);
+                    return;
+                }
+                const amount = parseFloat(amountValue);
+                if (amount <= 0) {
+                    alert('المبلغ يجب أن يكون أكبر من صفر');
+                    return;
+                }
+            }
+            
+            // تأكيد من المستخدم
+            if (!confirm('هل أنت متأكد من إرسال طلب تعديل هذه الحوالة؟\n\nسيتم تغيير حالة الحوالة إلى "قيد الموافقة"')) {
+                return;
+            }
+            
+            const payload = {
+                requestType: 2,
+                notes: document.getElementById('notesUpdate').value.trim(),
+                proposedCountry: document.getElementById('country').value || null,
+                proposedAmount: document.getElementById('amount').value ? parseFloat(document.getElementById('amount').value) : null,
+                proposedReason: document.getElementById('reason').value || null,
+                proposedPurpose: document.getElementById('purpose').value || null
+            };
+            const res = await fetch(`${API_BASE_URL}/remittances/change-requests?reference=${encodeURIComponent(current.reference)}`, {
+                method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(payload)
+            });
+            if (!res.ok) { alert('فشل إنشاء طلب التعديل'); return; }
+            
+            // تحديث حالة الحوالة المحلية
+            current.status = 'Pending Approval';
+            
+            // تحديث الأزرار
+            updateButtonsBasedOnStatus('Pending Approval');
+            
+            // بدء التحديث التلقائي لمتابعة تغيير الحالة بعد اعتماد/رفض الطلب
+            if (current && current.reference) {
+                startAutoRefresh(current.reference);
+            }
+            
+            // رسالة تأكيد مع تفاصيل
+            const changes = [];
+            if (payload.proposedCountry) changes.push(`• الدولة: ${payload.proposedCountry}`);
+            if (payload.proposedAmount) changes.push(`• المبلغ: ${payload.proposedAmount} د.أ`);
+            if (payload.proposedReason) changes.push(`• السبب: ${payload.proposedReason}`);
+            if (payload.proposedPurpose) changes.push(`• الغاية: ${payload.proposedPurpose}`);
+            
+            alert('✅ تم إرسال طلب التعديل بنجاح!\n\n' +
+                  '📋 تفاصيل الطلب:\n' +
+                  `• الرقم المرجعي: ${current.reference}\n` +
+                  `• نوع الطلب: تعديل بيانات الحوالة\n` +
+                  `• الحالة: قيد الموافقة\n` +
+                  `• تاريخ الإرسال: ${new Date().toLocaleString('ar-SA')}\n\n` +
+                  '📝 التعديلات المطلوبة:\n' +
+                  (changes.length > 0 ? changes.join('\n') : '• لا توجد تعديلات محددة') + '\n\n' +
+                  'سيتم مراجعة الطلب من قبل الإدارة قريباً.');
+        }
+
+        function formatDate(dateString) {
+            if (!dateString) return '';
+            const date = new Date(dateString);
+            // إضافة 3 ساعات لتصحيح المنطقة الزمنية (UTC+3)
+            date.setHours(date.getHours() + 3);
+            const year = date.getFullYear();
+            const month = (date.getMonth() + 1).toString().padStart(2, '0');
+            const day = date.getDate().toString().padStart(2, '0');
+            let hours = date.getHours();
+            const minutes = date.getMinutes().toString().padStart(2, '0');
+            const ampm = hours >= 12 ? 'PM' : 'AM';
+            hours = hours % 12;
+            hours = hours ? hours : 12; // the hour '0' should be '12'
+            const strHours = hours.toString().padStart(2, '0');
+
+            return `${month}/${day}/${year} ${strHours}:${minutes} ${ampm}`;
+        }
+        
+        function mapStatusToArabic(status) {
+            switch (status) {
+                case 'Payment pending': return 'بانتظار الدفع';
+                case 'Paid': return 'مدفوعة';
+                case 'Pending Approval': return 'قيد الموافقة';
+                default: return status;
+            }
+        }
+
+        // إيقاف التحديث التلقائي عند مغادرة الصفحة
+        window.addEventListener('beforeunload', () => {
+            stopAutoRefresh();
+        });
+    </script>
+</head>
+<body>
+    <div class="container">
+        <header class="header">
+            <div style="display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap;">
+                <div class="logo">
+                    <i class="fas fa-rotate"></i>
+                    <h1>إرجاع/تعديل حوالة</h1>
+                </div>
+                <a href="index.html" style="color: #ffffff; text-decoration: none; font-size: 16px; display: flex; align-items: center; gap: 6px; transition: opacity 0.3s;">
+                    <i class="fas fa-home"></i>
+                    <span>العودة للصفحة الرئيسية</span>
+                </a>
+            </div>
+            <p class="subtitle">ابحث بالرقم المرجعي ثم اختر إرجاع الحالة أو اقتراح تعديل</p>
+        </header>
+
+        <main class="main-content">
+            <div class="card">
+                <div style="display: flex; gap: 10px;">
+                    <input id="reference" type="text" placeholder="أدخل الرقم المرجعي" style="flex: 1; font-size: 18px; padding: 12px;">
+                    <button class="btn btn-primary" onclick="findByRef()"><i class="fas fa-search"></i> بحث</button>
+                    <button class="btn btn-secondary" onclick="refreshCurrentRemittance()" id="refreshBtn" style="display: none;"><i class="fas fa-sync-alt"></i> تحديث</button>
+                </div>
+                <div id="details" class="details-card">لا توجد بيانات</div>
+            </div>
+
+            <div class="card" id="returnCard" style="display: none;">
+                <h2 style="margin-bottom: 15px;"><i class="fas fa-undo"></i> طلب إرجاع إلى بانتظار الدفع</h2>
+                <div class="form-group">
+                    <label style="display: flex; align-items: center; gap: 6px; margin-bottom: 8px;">
+                        <i class="fas fa-comment-alt"></i>
+                        <span>ملاحظات الإرجاع (اختياري)</span>
+                    </label>
+                    <textarea id="notesReturn" rows="3" placeholder="أضف ملاحظات حول سبب إرجاع الحوالة..." style="width: 100%; padding: 10px; border: 1px solid #ddd; border-radius: 4px; font-family: inherit; resize: vertical;"></textarea>
+                </div>
+                <button class="btn btn-warning" onclick="requestReturn()"><i class="fas fa-undo"></i> إرسال طلب الإرجاع</button>
+            </div>
+
+            <div class="card" id="updateCard" style="display: none;">
+                <h2 style="margin-bottom: 15px;"><i class="fas fa-pen"></i> طلب تعديل بيانات الحوالة</h2>
+                <div class="grid-2">
+                    <div class="form-group">
+                        <label>الدولة</label>
+                        <select id="country">
+                            <option value="">اختر الدولة</option>
+                            <option value="الأردن">الأردن</option>
+                            <option value="السعودية">السعودية</option>
+                            <option value="الإمارات">الإمارات</option>
+                            <option value="تركيا">تركيا</option>
+                            <option value="مصر">مصر</option>
+                        </select>
+                    </div>
+                    <div class="form-group"><label>المبلغ</label><input id="amount" type="number" step="0.01"></div>
+                    <div class="form-group">
+                        <label>السبب</label>
+                        <select id="reason">
+                            <option value="">اختر السبب</option>
+                            <option value="نفقات عائلية">نفقات عائلية</option>
+                            <option value="تعليم">تعليم</option>
+                            <option value="علاج">علاج</option>
+                            <option value="استثمار">استثمار</option>
+                        </select>
+                    </div>
+                    <div class="form-group">
+                        <label>الغاية</label>
+                        <select id="purpose">
+                            <option value="">اختر الغاية</option>
+                            <option value="معيشة">معيشة</option>
+                            <option value="رسوم">رسوم</option>
+                            <option value="ادخار">ادخار</option>
+                            <option value="أخرى">أخرى</option>
+                        </select>
+                    </div>
+                </div>
+                <div class="form-group" style="margin-top: 15px;">
+                    <label style="display: flex; align-items: center; gap: 6px; margin-bottom: 8px;">
+                        <i class="fas fa-comment-alt"></i>
+                        <span>ملاحظات التعديل (اختياري)</span>
+                    </label>
+                    <textarea id="notesUpdate" rows="3" placeholder="أضف ملاحظات حول سبب تعديل الحوالة..." style="width: 100%; padding: 10px; border: 1px solid #ddd; border-radius: 4px; font-family: inherit; resize: vertical;"></textarea>
+                </div>
+                <button class="btn btn-info" onclick="requestUpdate()"><i class="fas fa-pen"></i> إرسال طلب التعديل</button>
+            </div>
+        </main>
+
+        <footer class="footer">
+            <p> نظام Alawneh-Eway. جميع الحقوق محفوظة. &copy; 2025</p>
+        </footer>
+    </div>
+</body>
+</html>
+
+

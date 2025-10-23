@@ -1,0 +1,691 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>إدارة أسعار الصرف - Alawneh Eway</title>
+    <link rel="stylesheet" href="css/style.css">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
+    <script src="js/countries.js"></script>
+    <style>
+        /* تحسينات خاصة بصفحة أسعار الصرف */
+        .alert-modern {
+            padding: 15px 20px;
+            border-radius: 10px;
+            margin-bottom: 20px;
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            font-size: 14px;
+            font-weight: 500;
+            box-shadow: 0 4px 15px rgba(0, 0, 0, 0.1);
+            animation: slideIn 0.3s ease-out;
+        }
+        
+        @keyframes slideIn {
+            from {
+                transform: translateY(-20px);
+                opacity: 0;
+            }
+            to {
+                transform: translateY(0);
+                opacity: 1;
+            }
+        }
+        
+        .alert-modern.success {
+            background: linear-gradient(135deg, #28a745 0%, #20c997 100%);
+            color: white;
+        }
+        
+        .alert-modern.error {
+            background: linear-gradient(135deg, #dc3545 0%, #e83e8c 100%);
+            color: white;
+        }
+        
+        .alert-modern i {
+            font-size: 20px;
+        }
+        
+        .exchange-form-container {
+            background: linear-gradient(135deg, #007bff 0%, #0056b3 100%);
+            border-radius: 15px;
+            padding: 25px;
+            margin-bottom: 25px;
+            box-shadow: 0 10px 30px rgba(0, 123, 255, 0.2);
+        }
+        
+        .exchange-form-container h2 {
+            color: #ffffff;
+            font-size: 20px;
+            margin-bottom: 20px;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+        
+        .form-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+            gap: 15px;
+            margin-bottom: 15px;
+        }
+        
+        .form-group-modern {
+            display: flex;
+            flex-direction: column;
+        }
+        
+        .form-group-modern label {
+            font-size: 13px;
+            font-weight: 600;
+            color: #ffffff;
+            margin-bottom: 6px;
+            display: flex;
+            align-items: center;
+            gap: 5px;
+        }
+        
+        .form-group-modern input,
+        .form-group-modern select,
+        .form-group-modern textarea {
+            padding: 10px 12px;
+            border: 2px solid rgba(255, 255, 255, 0.3);
+            border-radius: 8px;
+            font-size: 14px;
+            transition: all 0.3s;
+            background: rgba(255, 255, 255, 0.95);
+        }
+        
+        .form-group-modern input:focus,
+        .form-group-modern select:focus,
+        .form-group-modern textarea:focus {
+            border-color: #fff;
+            box-shadow: 0 0 0 3px rgba(255, 255, 255, 0.2);
+            outline: none;
+            transform: translateY(-1px);
+        }
+        
+        .form-group-modern textarea {
+            resize: vertical;
+            min-height: 80px;
+        }
+        
+        .btn-modern {
+            padding: 10px 20px;
+            border-radius: 8px;
+            font-size: 14px;
+            font-weight: 600;
+            transition: all 0.3s;
+            border: none;
+            cursor: pointer;
+            display: inline-flex;
+            align-items: center;
+            gap: 8px;
+        }
+        
+        .btn-primary-modern {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            box-shadow: 0 4px 15px rgba(102, 126, 234, 0.4);
+        }
+        
+        .btn-primary-modern:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 6px 20px rgba(102, 126, 234, 0.6);
+        }
+        
+        .btn-secondary-modern {
+            background: #6c757d;
+            color: white;
+        }
+        
+        .btn-secondary-modern:hover {
+            background: #5a6268;
+            transform: translateY(-2px);
+        }
+        
+        /* تحسينات الجدول */
+        .table-modern {
+            width: 100%;
+            border-collapse: separate;
+            border-spacing: 0;
+            font-size: 13px;
+            background: white;
+            border-radius: 10px;
+            overflow: hidden;
+            box-shadow: 0 2px 10px rgba(0, 0, 0, 0.08);
+        }
+        
+        .table-modern thead {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+        }
+        
+        .table-modern thead th {
+            padding: 12px 10px;
+            text-align: center;
+            color: #ffffff;
+            font-weight: 600;
+            font-size: 13px;
+            border: none;
+        }
+        
+        .table-modern tbody tr {
+            transition: all 0.2s;
+            border-bottom: 1px solid #f0f0f0;
+        }
+        
+        .table-modern tbody tr:hover {
+            background: #f8f9ff;
+            transform: scale(1.01);
+            box-shadow: 0 2px 8px rgba(102, 126, 234, 0.1);
+        }
+        
+        .table-modern tbody td {
+            padding: 10px 8px;
+            text-align: center;
+            font-size: 12px;
+            color: #333;
+        }
+        
+        .table-modern tbody td:first-child {
+            font-weight: 600;
+            color: #667eea;
+        }
+        
+        .badge-currency {
+            display: inline-block;
+            padding: 4px 10px;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            border-radius: 12px;
+            font-size: 11px;
+            font-weight: 600;
+        }
+        
+        .rate-value {
+            font-family: 'Courier New', monospace;
+            font-weight: 600;
+            color: #28a745;
+            font-size: 13px;
+        }
+        
+        .date-text {
+            font-size: 11px;
+            color: #6c757d;
+        }
+        
+        .btn-action {
+            padding: 6px 10px;
+            border-radius: 6px;
+            font-size: 12px;
+            border: none;
+            cursor: pointer;
+            transition: all 0.2s;
+            margin: 0 2px;
+        }
+        
+        .btn-edit {
+            background: #17a2b8;
+            color: white;
+        }
+        
+        .btn-edit:hover {
+            background: #138496;
+            transform: translateY(-2px);
+            box-shadow: 0 4px 8px rgba(23, 162, 184, 0.3);
+        }
+        
+        .btn-delete {
+            background: #dc3545;
+            color: white;
+        }
+        
+        .btn-delete:hover {
+            background: #c82333;
+            transform: translateY(-2px);
+            box-shadow: 0 4px 8px rgba(220, 53, 69, 0.3);
+        }
+        
+        .card-modern {
+            background: white;
+            border-radius: 15px;
+            padding: 25px;
+            margin-bottom: 25px;
+            box-shadow: 0 5px 20px rgba(0, 0, 0, 0.08);
+        }
+        
+        .card-modern h2 {
+            color: #333;
+            font-size: 20px;
+            margin-bottom: 20px;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            border-bottom: 3px solid #667eea;
+            padding-bottom: 10px;
+        }
+        
+        .empty-state {
+            text-align: center;
+            padding: 30px;
+            color: #6c757d;
+            font-size: 14px;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <header class="header">
+            <div style="display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap;">
+                <div class="logo">
+                    <i class="fas fa-exchange-alt"></i>
+                    <h1>إدارة أسعار الصرف</h1>
+                </div>
+                <a href="index.html" style="color: #ffffff; text-decoration: none; font-size: 16px; display: flex; align-items: center; gap: 6px; transition: opacity 0.3s;">
+                    <i class="fas fa-home"></i>
+                    <span>العودة للصفحة الرئيسية</span>
+                </a>
+            </div>
+            <p class="subtitle">إدارة أسعار الصرف للدول المختلفة</p>
+        </header>
+
+        <main class="main-content">
+            <!-- نموذج إضافة/تعديل سعر صرف -->
+            <div class="exchange-form-container">
+                <h2><i class="fas fa-plus-circle"></i> إضافة سعر صرف جديد</h2>
+                <form id="exchangeRateForm">
+                    <div class="form-grid">
+                        <div class="form-group-modern">
+                            <label for="country">
+                                <i class="fas fa-globe"></i>
+                                الدولة
+                            </label>
+                            <select id="country" name="country" required>
+                                <!-- سيتم ملء القائمة تلقائياً من countries.js -->
+                            </select>
+                        </div>
+                        <div class="form-group-modern">
+                            <label for="rate">
+                                <i class="fas fa-dollar-sign"></i>
+                                سعر الصرف
+                            </label>
+                            <input type="number" id="rate" name="rate" step="0.00001" min="0.00001" required placeholder="مثال: 0.19933">
+                        </div>
+                        <div class="form-group-modern">
+                            <label for="currency">
+                                <i class="fas fa-coins"></i>
+                                العملة
+                            </label>
+                            <select id="currency" name="currency" required>
+                                <option value="USD">دولار أمريكي (USD)</option>
+                                <option value="EUR">يورو (EUR)</option>
+                                <option value="GBP">جنيه إسترليني (GBP)</option>
+                                <option value="JOD">دينار أردني (JOD)</option>
+                                <option value="SAR">ريال سعودي (SAR)</option>
+                                <option value="AED">درهم إماراتي (AED)</option>
+                                <option value="KWD">دينار كويتي (KWD)</option>
+                                <option value="QAR">ريال قطري (QAR)</option>
+                                <option value="BHD">دينار بحريني (BHD)</option>
+                                <option value="OMR">ريال عماني (OMR)</option>
+                            </select>
+                        </div>
+                    </div>
+                    <div class="form-group-modern" style="grid-column: 1 / -1;">
+                        <label for="notes">
+                            <i class="fas fa-sticky-note"></i>
+                            ملاحظات (اختياري)
+                        </label>
+                        <textarea id="notes" name="notes" rows="3" placeholder="ملاحظات إضافية..."></textarea>
+                    </div>
+                    <div style="display: flex; gap: 10px; justify-content: flex-start; margin-top: 15px;">
+                        <button type="submit" class="btn-modern btn-primary-modern">
+                            <i class="fas fa-save"></i> حفظ
+                        </button>
+                        <button type="button" class="btn-modern btn-secondary-modern" onclick="resetForm()">
+                            <i class="fas fa-undo"></i> إعادة تعيين
+                        </button>
+                    </div>
+                </form>
+            </div>
+
+            <!-- قائمة أسعار الصرف -->
+            <div class="card-modern">
+                <h2><i class="fas fa-list"></i> قائمة أسعار الصرف</h2>
+                <div class="table-container">
+                    <table class="table-modern">
+                        <thead>
+                            <tr>
+                                <th style="width: 50px;">#</th>
+                                <th><i class="fas fa-globe"></i> الدولة</th>
+                                <th><i class="fas fa-chart-line"></i> سعر الصرف</th>
+                                <th><i class="fas fa-coins"></i> العملة</th>
+                                <th><i class="fas fa-calendar-plus"></i> تاريخ الإنشاء</th>
+                                <th><i class="fas fa-calendar-check"></i> آخر تعديل</th>
+                                <th style="width: 120px;"><i class="fas fa-cog"></i> الإجراءات</th>
+                            </tr>
+                        </thead>
+                        <tbody id="exchangeRatesTable">
+                            <tr>
+                                <td colspan="7" class="empty-state">
+                                    <i class="fas fa-spinner fa-spin"></i> جاري التحميل...
+                                </td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+
+        </main>
+
+        <footer class="footer">
+            <p> نظام Alawneh-Eway. جميع الحقوق محفوظة. &copy; 2025</p>
+        </footer>
+    </div>
+
+    <script>
+        const API_BASE_URL = window.location.origin; // use same origin to avoid redirects/CORS
+        let editingId = null;
+        let currentEditingRate = null; // cache currently edited rate for fallback normalization
+
+        // تحميل أسعار الصرف عند تحميل الصفحة
+        document.addEventListener('DOMContentLoaded', () => {
+            // ملء dropdown الدول
+            populateCountryDropdown('country', true);
+            loadExchangeRates();
+        });
+
+        // تحميل أسعار الصرف
+        async function loadExchangeRates() {
+            try {
+                const response = await fetch(`${API_BASE_URL}/exchange-rates?t=${Date.now()}`, { cache: 'no-store' });
+                if (!response.ok) {
+                    throw new Error('فشل في تحميل أسعار الصرف');
+                }
+                
+                const rates = await response.json();
+                displayExchangeRates(rates);
+            } catch (error) {
+                console.error('Error loading exchange rates:', error);
+                document.getElementById('exchangeRatesTable').innerHTML = 
+                    '<tr><td colspan="7" class="empty-state"><i class="fas fa-exclamation-triangle" style="color: #dc3545;"></i><br>خطأ في تحميل البيانات</td></tr>';
+            }
+        }
+
+        // عرض أسعار الصرف في الجدول
+        function displayExchangeRates(rates) {
+            const tbody = document.getElementById('exchangeRatesTable');
+            
+            if (rates.length === 0) {
+                tbody.innerHTML = '<tr><td colspan="7" class="empty-state"><i class="fas fa-inbox"></i><br>لا توجد أسعار صرف</td></tr>';
+                return;
+            }
+
+            tbody.innerHTML = rates.map((rate, index) => `
+                <tr>
+                    <td><strong>${index + 1}</strong></td>
+                    <td><strong>${getCountryLabel(rate.country)}</strong></td>
+                    <td><span class="rate-value">${rate.rate}</span></td>
+                    <td><span class="badge-currency">${rate.currency}</span></td>
+                    <td><span class="date-text">${formatDate(rate.createdAt)}</span></td>
+                    <td><span class="date-text">${rate.lastModifiedAt ? formatDate(rate.lastModifiedAt) : '<i class="fas fa-minus"></i>'}</span></td>
+                    <td>
+                        <button class="btn-action btn-edit" onclick="editExchangeRate(${rate.id})" title="تعديل">
+                            <i class="fas fa-edit"></i>
+                        </button>
+                        <button class="btn-action btn-delete" onclick="deleteExchangeRate(${rate.id}, '${escapeHtml(rate.country)}')" title="حذف">
+                            <i class="fas fa-trash"></i>
+                        </button>
+                    </td>
+                </tr>
+            `).join('');
+        }
+
+        // إرسال النموذج
+        document.getElementById('exchangeRateForm').addEventListener('submit', async (e) => {
+            e.preventDefault();
+            
+            const formData = new FormData(e.target);
+            // Normalize/resolve country value even if the select didn't match an option
+            const rawCountry = (formData.get('country') || '').toString().trim();
+            let resolvedCountry = rawCountry;
+            if (!resolvedCountry && currentEditingRate) {
+                const match = COUNTRIES.find(c => c.value === currentEditingRate.country || c.label === currentEditingRate.country);
+                resolvedCountry = match ? match.value : currentEditingRate.country;
+            }
+            const parsedRate = parseFloat(formData.get('rate'));
+            if (Number.isNaN(parsedRate) || parsedRate <= 0) {
+                showMessage('يرجى إدخال سعر صرف صالح أكبر من صفر', 'error');
+                return;
+            }
+            const exchangeRate = {
+                country: resolvedCountry,
+                rate: parsedRate,
+                currency: (formData.get('currency') || getCountryCurrency(resolvedCountry) || 'USD').toString(),
+                notes: (formData.get('notes') || '').toString().trim() || null
+            };
+
+            try {
+                let response;
+                if (editingId) {
+                    // تحديث
+                    console.log('Updating exchange rate:', editingId, exchangeRate);
+                    response = await fetch(`${API_BASE_URL}/exchange-rates/${editingId}`, {
+                        method: 'PUT',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify(exchangeRate)
+                    });
+                } else {
+                    // إضافة جديد
+                    console.log('Creating new exchange rate:', exchangeRate);
+                    response = await fetch(`${API_BASE_URL}/exchange-rates`, {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify(exchangeRate)
+                    });
+                }
+                
+                console.log('Response status:', response.status);
+                console.log('Response headers:', response.headers);
+
+                if (!response.ok) {
+                    // قد يعيد السيرفر رسالة ليست JSON (مثلاً HTML أو نص)
+                    let message = 'فشل في حفظ سعر الصرف';
+                    try {
+                        const ct = response.headers.get('content-type') || '';
+                        if (ct.includes('application/json')) {
+                            const errorData = await response.json();
+                            if (typeof errorData === 'string') {
+                                message = errorData || message;
+                            } else {
+                                message = errorData.message || errorData.error || errorData.title || errorData.detail || message;
+                            }
+                        } else {
+                            const textResponse = (await response.text()).trim();
+                            message = textResponse || message;
+                        }
+                    } catch (parseError) {
+                        console.error('Error parsing response:', parseError);
+                        message = `خطأ في الاستجابة: ${response.status} ${response.statusText}`;
+                    }
+                    throw new Error(message);
+                }
+
+                let saved;
+                try {
+                    // قد تعيد بعض الخوادم 204 في بعض الحالات
+                    saved = await response.json();
+                } catch { saved = null; }
+                console.log('Saved exchange rate from server:', saved);
+
+                showMessage(editingId ? 'تم تحديث سعر الصرف بنجاح!' : 'تم إضافة سعر الصرف بنجاح!', 'success');
+                resetForm();
+                // إعادة تحميل البيانات فوراً لضمان عرض التحديثات
+                setTimeout(() => {
+                    loadExchangeRates();
+                }, 100);
+                
+                // تحديث فوري للبيانات في الجدول إذا كان هناك تحديث
+                if (editingId && saved) {
+                    // تحديث الصف المحدد في الجدول مباشرة
+                    const rows = document.querySelectorAll('#exchangeRatesTable tr');
+                    rows.forEach(row => {
+                        const editButton = row.querySelector('button[onclick*="editExchangeRate"]');
+                        if (editButton && editButton.getAttribute('onclick').includes(editingId)) {
+                            const cells = row.querySelectorAll('td');
+                            if (cells.length >= 6) {
+                                cells[2].textContent = saved.rate; // تحديث سعر الصرف
+                                cells[5].textContent = formatDate(saved.lastModifiedAt || new Date()); // تحديث وقت آخر تعديل
+                            }
+                        }
+                    });
+                }
+            } catch (error) {
+                showMessage(`خطأ: ${error.message}`, 'error');
+            }
+        });
+
+        // ضبط العملة تلقائياً بناءً على اختيار الدولة
+        document.addEventListener('DOMContentLoaded', () => {
+            const countrySelect = document.getElementById('country');
+            const currencySelect = document.getElementById('currency');
+            if (countrySelect && currencySelect) {
+                countrySelect.addEventListener('change', () => {
+                    const info = getCountryInfo(countrySelect.value);
+                    if (info && info.currency) {
+                        currencySelect.value = info.currency;
+                    }
+                });
+            }
+        });
+
+        // تعديل سعر صرف
+        async function editExchangeRate(id) {
+            try {
+                console.log('Editing exchange rate with ID:', id);
+                const response = await fetch(`${API_BASE_URL}/exchange-rates?t=${Date.now()}`, { cache: 'no-store' });
+                if (!response.ok) throw new Error('فشل في تحميل البيانات');
+                
+                const rates = await response.json();
+                const rate = rates.find(r => r.id === id);
+                
+                if (!rate) {
+                    showMessage('سعر الصرف غير موجود', 'error');
+                    return;
+                }
+
+                console.log('Found rate to edit:', rate);
+
+                // ملء النموذج
+                currentEditingRate = rate;
+                const info = getCountryInfo(rate.country) || COUNTRIES.find(c => c.label === rate.country);
+                const canonical = info ? info.value : rate.country;
+                document.getElementById('country').value = canonical;
+                document.getElementById('rate').value = rate.rate;
+                document.getElementById('currency').value = (info && info.currency) ? info.currency : rate.currency;
+                document.getElementById('notes').value = rate.notes || '';
+                
+                editingId = id;
+                console.log('Set editingId to:', editingId);
+                
+                // تغيير عنوان النموذج
+                document.querySelector('.exchange-form-container h2').innerHTML = '<i class="fas fa-edit"></i> تعديل سعر الصرف';
+                document.querySelector('button[type="submit"]').innerHTML = '<i class="fas fa-save"></i> تحديث';
+                
+                // التمرير إلى النموذج
+                document.getElementById('exchangeRateForm').scrollIntoView({ behavior: 'smooth' });
+            } catch (error) {
+                showMessage(`خطأ: ${error.message}`, 'error');
+            }
+        }
+
+        // حذف سعر صرف
+        async function deleteExchangeRate(id, countryName) {
+            if (!confirm(`هل أنت متأكد من حذف سعر صرف "${countryName}"؟`)) {
+                return;
+            }
+
+            try {
+                const response = await fetch(`${API_BASE_URL}/exchange-rates/${id}`, {
+                    method: 'DELETE'
+                });
+
+                if (!response.ok) {
+                    const errorData = await response.json();
+                    throw new Error(errorData.message || 'فشل في حذف سعر الصرف');
+                }
+
+                showMessage('تم حذف سعر الصرف بنجاح!', 'success');
+                loadExchangeRates();
+            } catch (error) {
+                showMessage(`خطأ: ${error.message}`, 'error');
+            }
+        }
+
+        // إعادة تعيين النموذج
+        function resetForm() {
+            document.getElementById('exchangeRateForm').reset();
+            editingId = null;
+            currentEditingRate = null;
+            document.querySelector('.exchange-form-container h2').innerHTML = '<i class="fas fa-plus-circle"></i> إضافة سعر صرف جديد';
+            document.querySelector('button[type="submit"]').innerHTML = '<i class="fas fa-save"></i> حفظ';
+        }
+
+        // عرض رسالة
+        function showMessage(message, type) {
+            const alert = document.createElement('div');
+            alert.className = `alert-modern ${type}`;
+            alert.innerHTML = `
+                <i class="fas fa-${type === 'success' ? 'check-circle' : 'exclamation-circle'}"></i>
+                <span>${message}</span>
+            `;
+            
+            document.querySelector('.main-content').insertBefore(alert, document.querySelector('.main-content').firstChild);
+            
+            setTimeout(() => {
+                alert.style.opacity = '0';
+                alert.style.transform = 'translateY(-20px)';
+                alert.style.transition = 'all 0.3s ease-out';
+                setTimeout(() => {
+                    alert.remove();
+                }, 300);
+            }, 5000);
+        }
+
+        // تنسيق التاريخ
+        function formatDate(dateString) {
+            const date = new Date(dateString);
+            // التحقق من أن التاريخ صحيح
+            if (isNaN(date.getTime())) {
+                return dateString; // إرجاع النص الأصلي إذا كان التاريخ غير صحيح
+            }
+            
+            // إضافة 3 ساعات لتصحيح المنطقة الزمنية (UTC+3)
+            date.setHours(date.getHours() + 3);
+            
+            // استخدام التوقيت المحلي مع تنسيق 12 ساعة
+            const year = date.getFullYear();
+            const month = String(date.getMonth() + 1).padStart(2, '0');
+            const day = String(date.getDate()).padStart(2, '0');
+            
+            let hours = date.getHours();
+            const minutes = String(date.getMinutes()).padStart(2, '0');
+            const ampm = hours >= 12 ? 'PM' : 'AM';
+            
+            // تحويل إلى تنسيق 12 ساعة
+            hours = hours % 12;
+            hours = hours ? hours : 12; // الساعة 0 تصبح 12
+            const formattedHours = String(hours).padStart(2, '0');
+            
+            return `${month}/${day}/${year} ${formattedHours}:${minutes} ${ampm}`;
+        }
+
+        // تنظيف النص
+        function escapeHtml(text) {
+            const div = document.createElement('div');
+            div.textContent = text;
+            return div.innerHTML;
+        }
+    </script>
+</body>
+</html>

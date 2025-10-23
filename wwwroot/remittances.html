@@ -1,0 +1,1067 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>إرسال حوالة - Alawneh-Eway</title>
+    <link rel="stylesheet" href="css/style.css">
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
+    <script src="js/countries.js"></script>
+    <style>
+        .fee-box { background: transparent; padding: 10px; color: #6c757d; }
+        .remittances-fee-box { 
+            background: #ffffff; 
+            padding: 15px; 
+            border-radius: 8px;
+            border: 1px solid #ddd;
+            margin-top: 15px;
+            text-align: center;
+            font-size: 16px;
+        }
+        .remittances-fee-box .label { 
+            color: #6c757d; 
+            font-weight: bold; 
+        }
+        .remittances-fee-box .value { 
+            color: #6c757d; 
+            font-weight: normal; 
+        }
+        .grid-2 { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; }
+        .results { max-height: 200px; overflow: auto; border: 1px solid #ddd; border-radius: 6px; }
+        .results div { padding: 8px 10px; cursor: pointer; color: #6c757d; }
+        .results div:hover { background: #f0f0f0; }
+        .form-group label { color: #ffffff; }
+        .form-group input, .form-group select { font-size: 18px; padding: 12px; }
+        .card h2 { color: #ffffff; }
+        .link-button { background: transparent; border: 1px solid #999; color: #fff; padding: 6px 10px; border-radius: 6px; cursor: pointer; }
+        .link-button:hover { background: #444; }
+        .manual-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+        .hidden { display: none; }
+        .badge-status { padding: 4px 10px; font-weight: bold; color: #6c757d; display: inline-block; }
+        .badge-pending { color: #6c757d; }
+        .badge-paid { color: #6c757d; }
+        .badge-pending-approval { color: #6c757d; }
+        
+        /* ألوان عناوين الحقول في المستفيد اليدوي */
+        .manual-beneficiary .form-group label { color: #6c757d !important; }
+        
+        /* توحيد ألوان جميع عناوين الحقول */
+        .form-group label { color: #6c757d !important; }
+        
+        /* توحيد ألوان عناوين المرسل والمستفيد */
+        .card h2 { color: #6c757d !important; }
+        
+        /* تكبير ارتفاع حقول اختيار المرسل والمستفيد */
+        #senderQuery,
+        #beneficiaryQuery {
+            height: 18px;
+            font-size: 16px;
+            padding: 12px 16px;
+        }
+        
+        /* إصلاح ظهور حقول المستفيد اليدوي */
+        #manualBeneficiarySection .form-group input,
+        #manualBeneficiarySection .form-group select {
+            background-color: #ffffff;
+            color: #333333;
+            border: 1px solid #ced4da;
+            border-radius: 4px;
+            padding: 8px 12px;
+            font-size: 16px;
+        }
+        
+        #manualBeneficiarySection .form-group input:focus,
+        #manualBeneficiarySection .form-group select:focus {
+            border-color: #007bff;
+            outline: none;
+            box-shadow: 0 0 0 2px rgba(0, 123, 255, 0.25);
+        }
+        
+        /* تصميم عرض المرسل والمستفيد المختار أسفل الحقل */
+        .selected-party {
+            margin-top: 12px;
+            padding: 8px 0;
+            display: none;
+            align-items: center;
+            gap: 10px;
+        }
+        
+        .selected-party.show {
+            display: flex;
+        }
+        
+        .selected-party i.check-icon {
+            color: #28a745;
+            font-size: 18px;
+        }
+        
+        .selected-party .party-info {
+            flex: 1;
+        }
+        
+        .selected-party .party-name {
+            color: #495057;
+            font-weight: 600;
+            font-size: 16px;
+            display: block;
+            margin-bottom: 4px;
+        }
+        
+        .selected-party .party-id {
+            color: #6c757d;
+            font-size: 13px;
+            display: block;
+        }
+        
+        .selected-party .clear-btn {
+            background: transparent;
+            border: 1px solid #dc3545;
+            color: #dc3545;
+            cursor: pointer;
+            font-size: 14px;
+            padding: 6px 12px;
+            border-radius: 6px;
+            transition: all 0.3s;
+            display: flex;
+            align-items: center;
+            gap: 6px;
+            font-weight: 500;
+        }
+        
+        .selected-party .clear-btn:hover {
+            background: #dc3545;
+            color: white;
+            transform: translateY(-1px);
+            box-shadow: 0 2px 8px rgba(220, 53, 69, 0.3);
+        }
+    </style>
+    <script>
+        const API_BASE_URL = 'http://localhost:5216';
+        let selectedSender = null;
+        let selectedBeneficiary = null;
+        let manualBeneficiaryEnabled = false;
+
+        async function search(kind) {
+            const q = document.getElementById(kind + 'Query').value.trim();
+            if (!q) { document.getElementById(kind + 'Results').innerHTML = ''; return; }
+            const res = await fetch(`${API_BASE_URL}/parties/search?q=${encodeURIComponent(q)}`);
+            const list = res.ok ? await res.json() : [];
+            const container = document.getElementById(kind + 'Results');
+            container.innerHTML = list.map(p => `
+                <div onclick="selectParty('${kind}', ${p.id}, '${p.nameAr.replace(/'/g, "\'")}','${p.nameEn.replace(/'/g, "\'")}', '${p.nationalId}')">
+                    ${p.nameAr}<br>
+                    <small>${p.nameEn} · ${p.nationalId} · ${p.phoneNumber}</small>
+                </div>
+            `).join('');
+        }
+
+        function selectParty(kind, id, nameAr, nameEn, nationalId) {
+            if (kind === 'sender') {
+                selectedSender = { id, nameAr, nameEn, nationalId };
+                document.getElementById('senderSelected').innerHTML = `
+                    <i class="fas fa-check-circle check-icon"></i>
+                    <div class="party-info">
+                        <span class="party-name">${nameAr} (${nameEn})</span>
+                        <span class="party-id">الرقم المعرف: ${nationalId}</span>
+                    </div>
+                    <button class="clear-btn" onclick="clearSender(event)">
+                        <i class="fas fa-times"></i>
+                        إلغاء
+                    </button>
+                `;
+                document.getElementById('senderSelected').classList.add('show');
+                document.getElementById('senderResults').innerHTML = '';
+                document.getElementById('senderQuery').value = '';
+            } else {
+                selectedBeneficiary = { id, nameAr, nameEn, nationalId };
+                document.getElementById('beneficiarySelected').innerHTML = `
+                    <i class="fas fa-check-circle check-icon"></i>
+                    <div class="party-info">
+                        <span class="party-name">${nameAr} (${nameEn})</span>
+                        <span class="party-id">الرقم المعرف: ${nationalId}</span>
+                    </div>
+                    <button class="clear-btn" onclick="clearBeneficiary(event)">
+                        <i class="fas fa-times"></i>
+                        إلغاء
+                    </button>
+                `;
+                document.getElementById('beneficiarySelected').classList.add('show');
+                document.getElementById('beneficiaryResults').innerHTML = '';
+                document.getElementById('beneficiaryQuery').value = '';
+            }
+            updateFee();
+        }
+        
+        function clearSender(event) {
+            event.preventDefault();
+            event.stopPropagation();
+            selectedSender = null;
+            document.getElementById('senderSelected').classList.remove('show');
+            document.getElementById('senderSelected').innerHTML = '';
+            updateFee();
+        }
+        
+        function clearBeneficiary(event) {
+            event.preventDefault();
+            event.stopPropagation();
+            selectedBeneficiary = null;
+            document.getElementById('beneficiarySelected').classList.remove('show');
+            document.getElementById('beneficiarySelected').innerHTML = '';
+            updateFee();
+        }
+
+        // دالة لربط الفاليديشن بحقول المستفيد اليدوي
+        function setupManualBeneficiaryValidation() {
+            // ربط الفاليديشن بحقول الرقم الوطني
+            const nationalIdInput = document.getElementById('mbNationalId');
+            if (nationalIdInput) {
+                nationalIdInput.addEventListener('keypress', allowOnlyNumbers);
+                nationalIdInput.addEventListener('paste', (e) => cleanPastedData(e, 'numbers'));
+            }
+
+            // ربط الفاليديشن بحقل الاسم العربي
+            const arabicNameInput = document.getElementById('mbNameAr');
+            if (arabicNameInput) {
+                arabicNameInput.addEventListener('keypress', allowOnlyArabic);
+                arabicNameInput.addEventListener('paste', (e) => cleanPastedData(e, 'arabic'));
+            }
+
+            // ربط الفاليديشن بحقل الاسم الإنجليزي
+            const englishNameInput = document.getElementById('mbNameEn');
+            if (englishNameInput) {
+                englishNameInput.addEventListener('keypress', allowOnlyEnglish);
+                englishNameInput.addEventListener('paste', (e) => cleanPastedData(e, 'english'));
+            }
+
+            // ربط الفاليديشن بحقل رقم الهاتف
+            const phoneInput = document.getElementById('mbPhone');
+            if (phoneInput) {
+                phoneInput.addEventListener('keypress', allowOnlyNumbers);
+                phoneInput.addEventListener('paste', (e) => cleanPastedData(e, 'numbers'));
+            }
+        }
+
+        function toggleManualBeneficiary() {
+            manualBeneficiaryEnabled = !manualBeneficiaryEnabled;
+            document.getElementById('manualBeneficiarySection').classList.toggle('hidden', !manualBeneficiaryEnabled);
+            
+            // إعداد الفاليديشن عند إظهار الحقول
+            if (manualBeneficiaryEnabled) {
+                setTimeout(setupManualBeneficiaryValidation, 100);
+            }
+        }
+
+        function getManualBeneficiaryPayload() {
+            return {
+                nationalId: document.getElementById('mbNationalId').value.trim(),
+                nameAr: document.getElementById('mbNameAr').value.trim(),
+                nameEn: document.getElementById('mbNameEn').value.trim(),
+                phoneNumber: document.getElementById('mbPhone').value.trim(),
+                birthDate: document.getElementById('mbBirthDate').value,
+                address: document.getElementById('mbAddress').value.trim(),
+                type: 2
+            };
+        }
+
+        async function updateFee() {
+            const amount = parseFloat(document.getElementById('amount').value || '0');
+            const country = document.getElementById('country').value;
+            const feeEl = document.getElementById('fee');
+            const rateEl = document.getElementById('rate');
+            const totalEl = document.getElementById('total');
+            const convEl = document.getElementById('converted');
+            const ccyEl = document.getElementById('ccy');
+            if (isNaN(amount) || amount < 0 || !country) {
+                if (feeEl) feeEl.textContent = '—';
+                if (rateEl) rateEl.textContent = '—';
+                if (totalEl) totalEl.textContent = '—';
+                if (convEl) convEl.textContent = '—';
+                if (ccyEl) ccyEl.textContent = '';
+                return;
+            }
+            try {
+                // احسب العمولة حسب الدولة
+                const feeRes = await fetch(`${API_BASE_URL}/fees?country=${encodeURIComponent(country)}&amount=${amount}`);
+                const feeData = feeRes.ok ? await feeRes.json() : { fee: 0 };
+                const fee = Number(feeData.fee || 0);
+                if (feeEl) feeEl.textContent = fee.toFixed(2);
+
+                // احضر سعر الصرف للدولة (اختياري للعرض)
+                const rateRes = await fetch(`${API_BASE_URL}/exchange-rates/${encodeURIComponent(country)}`);
+                let rate = null;
+                let currency = '';
+                if (rateRes.ok) {
+                    const rateJson = await rateRes.json();
+                    rate = Number(rateJson.rate || 0);
+                    currency = rateJson.currency || '';
+                }
+                if (rateEl) rateEl.textContent = rate ? rate.toFixed(4) : '—';
+
+                // المجموع الكلي = المبلغ + العمولة
+                const total = amount + fee;
+                if (totalEl) totalEl.textContent = total.toFixed(2);
+
+                // مبلغ الحوالة بالعملة الأجنبية = amount / rate (إذا كان السعر > 0)
+                if (rate && rate > 0) {
+                    const converted = amount / rate;
+                    if (convEl) convEl.textContent = converted.toFixed(2);
+                    if (ccyEl) ccyEl.textContent = currency;
+                } else {
+                    if (convEl) convEl.textContent = '—';
+                    if (ccyEl) ccyEl.textContent = '';
+                }
+            } catch (_) {
+                if (feeEl) feeEl.textContent = '—';
+                if (rateEl) rateEl.textContent = '—';
+                if (totalEl) totalEl.textContent = '—';
+                if (convEl) convEl.textContent = '—';
+                if (ccyEl) ccyEl.textContent = '';
+            }
+        }
+
+        // دوال الفاليديشن
+        function validateNumericField(value, fieldName) {
+            if (!value || value.trim() === '') {
+                return `${fieldName} مطلوب`;
+            }
+            if (!/^\d+(\.\d+)?$/.test(value.trim())) {
+                return `${fieldName} يجب أن يحتوي على أرقام فقط`;
+            }
+            return null;
+        }
+
+        // دوال الفاليديشن للمستفيد اليدوي
+        function validateNationalId(nationalId) {
+            if (!nationalId || nationalId.trim() === '') {
+                return 'الرقم الوطني مطلوب';
+            }
+            if (!/^\d+$/.test(nationalId.trim())) {
+                return 'الرقم الوطني يجب أن يحتوي على أرقام فقط';
+            }
+            return null;
+        }
+
+        function validateArabicName(name) {
+            if (!name || name.trim() === '') {
+                return 'الاسم العربي مطلوب';
+            }
+            if (!/^[\u0600-\u06FF\s]+$/.test(name.trim())) {
+                return 'الاسم العربي يجب أن يحتوي على أحرف عربية فقط';
+            }
+            return null;
+        }
+
+        function validateEnglishName(name) {
+            if (!name || name.trim() === '') {
+                return 'الاسم الإنجليزي مطلوب';
+            }
+            if (!/^[a-zA-Z\s]+$/.test(name.trim())) {
+                return 'الاسم الإنجليزي يجب أن يحتوي على أحرف إنجليزية فقط';
+            }
+            return null;
+        }
+
+        // دوال منع إدخال الأحرف غير المرغوبة
+        function allowOnlyNumbers(event) {
+            const char = String.fromCharCode(event.which);
+            if (!/[0-9]/.test(char)) {
+                event.preventDefault();
+                return false;
+            }
+        }
+
+        function allowOnlyArabic(event) {
+            const char = String.fromCharCode(event.which);
+            if (!/[\u0600-\u06FF\s]/.test(char) && event.which !== 8 && event.which !== 46) {
+                event.preventDefault();
+                return false;
+            }
+        }
+
+        function allowOnlyEnglish(event) {
+            const char = String.fromCharCode(event.which);
+            if (!/[a-zA-Z\s]/.test(char) && event.which !== 8 && event.which !== 46) {
+                event.preventDefault();
+                return false;
+            }
+        }
+
+        // دالة لتنظيف البيانات عند اللصق
+        function cleanPastedData(event, type) {
+            setTimeout(() => {
+                const input = event.target;
+                let value = input.value;
+                
+                switch(type) {
+                    case 'numbers':
+                        value = value.replace(/[^0-9]/g, '');
+                        break;
+                    case 'arabic':
+                        value = value.replace(/[^\u0600-\u06FF\s]/g, '');
+                        break;
+                    case 'english':
+                        value = value.replace(/[^a-zA-Z\s]/g, '');
+                        break;
+                }
+                
+                if (input.value !== value) {
+                    input.value = value;
+                }
+            }, 10);
+        }
+
+        function validatePhoneNumber(phone) {
+            if (!phone || phone.trim() === '') {
+                return 'رقم الهاتف مطلوب';
+            }
+            // إزالة المسافات والرموز الخاصة
+            const cleanPhone = phone.replace(/[\s\-\(\)\+]/g, '');
+            if (!/^\d{10,15}$/.test(cleanPhone)) {
+                return 'رقم الهاتف يجب أن يحتوي على 10-15 رقم فقط';
+            }
+            return null;
+        }
+
+        function validateNameField(value, fieldName) {
+            if (!value || value.trim() === '') {
+                return `${fieldName} مطلوب`;
+            }
+            // التحقق من أن الاسم يحتوي على أحرف فقط (عربية أو إنجليزية)
+            if (!/^[\u0600-\u06FF\u0750-\u077F\u08A0-\u08FF\uFB50-\uFDFF\uFE70-\uFEFFa-zA-Z\s]+$/.test(value.trim())) {
+                return `${fieldName} يجب أن يحتوي على أحرف فقط`;
+            }
+            if (value.trim().length < 2) {
+                return `${fieldName} يجب أن يكون على الأقل حرفين`;
+            }
+            return null;
+        }
+
+        function validateNationalId(nationalId) {
+            if (!nationalId || nationalId.trim() === '') {
+                return 'الرقم الوطني مطلوب';
+            }
+            if (!/^\d{10}$/.test(nationalId.trim())) {
+                return 'الرقم الوطني يجب أن يكون 10 أرقام';
+            }
+            return null;
+        }
+
+        async function submitRemittance() {
+            // فاليديشن المرسل
+            if (!selectedSender) { 
+                alert('يرجى اختيار المرسل'); 
+                return; 
+            }
+
+            // فاليديشن المستفيد
+            if (!selectedBeneficiary) {
+                // محاولة إنشاء مستفيد يدوي إذا تم تفعيل النموذج
+                if (manualBeneficiaryEnabled) {
+                    const mb = getManualBeneficiaryPayload();
+                    
+                    // فاليديشن البيانات اليدوية
+                    const nationalIdError = validateNationalId(mb.nationalId);
+                    if (nationalIdError) {
+                        alert(nationalIdError);
+                        return;
+                    }
+
+                    const nameArError = validateNameField(mb.nameAr, 'الاسم بالعربية');
+                    if (nameArError) {
+                        alert(nameArError);
+                        return;
+                    }
+
+                    const nameEnError = validateNameField(mb.nameEn, 'الاسم بالإنجليزية');
+                    if (nameEnError) {
+                        alert(nameEnError);
+                        return;
+                    }
+
+                    const phoneError = validatePhoneNumber(mb.phoneNumber);
+                    if (phoneError) {
+                        alert(phoneError);
+                        return;
+                    }
+
+                    if (!mb.birthDate) {
+                        alert('تاريخ الميلاد مطلوب');
+                        return;
+                    }
+
+                    const resParty = await fetch(`${API_BASE_URL}/parties`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(mb) });
+                    if (!resParty.ok) { alert('فشل حفظ المستفيد اليدوي'); return; }
+                    const saved = await resParty.json();
+                    selectedBeneficiary = { id: saved.id, nameAr: saved.nameAr, nameEn: saved.nameEn, nationalId: saved.nationalId };
+                    document.getElementById('beneficiarySelected').innerHTML = `
+                        <i class="fas fa-check-circle check-icon"></i>
+                        <div class="party-info">
+                            <span class="party-name">${saved.nameAr} (${saved.nameEn})</span>
+                            <span class="party-id">الرقم المعرف: ${saved.nationalId}</span>
+                        </div>
+                        <button class="clear-btn" onclick="clearBeneficiary(event)">
+                            <i class="fas fa-times"></i>
+                            إلغاء
+                        </button>
+                    `;
+                    document.getElementById('beneficiarySelected').classList.add('show');
+                } else {
+                    alert('يرجى اختيار المستفيد أو تفعيل الإدخال اليدوي');
+                    return;
+                }
+            }
+
+            // فاليديشن الدولة
+            const country = document.getElementById('country').value;
+            if (!country) {
+                alert('يرجى اختيار الدولة');
+                return;
+            }
+
+            // فاليديشن المبلغ
+            const amountValue = document.getElementById('amount').value;
+            const amountError = validateNumericField(amountValue, 'المبلغ');
+            if (amountError) {
+                alert(amountError);
+                return;
+            }
+
+            const amount = parseFloat(amountValue);
+            if (amount <= 0) {
+                alert('المبلغ يجب أن يكون أكبر من صفر');
+                return;
+            }
+
+            // عرض شاشة التأكيد مع جميع التفاصيل
+            await showConfirmationModal();
+        }
+
+        async function showConfirmationModal() {
+            const amount = parseFloat(document.getElementById('amount').value);
+            const country = document.getElementById('country').value;
+            const reason = document.getElementById('reason').value;
+            const purpose = document.getElementById('purpose').value;
+
+            // احصل على البيانات المحسوبة
+            const feeText = document.getElementById('fee').textContent;
+            const rateText = document.getElementById('rate').textContent;
+            const totalText = document.getElementById('total').textContent;
+            const convertedText = document.getElementById('converted').textContent;
+            const ccyText = document.getElementById('ccy').textContent;
+
+            // املأ تفاصيل الحوالة في الـ modal
+            document.getElementById('confirmSender').textContent = `${selectedSender.nameAr} (${selectedSender.nameEn})`;
+            document.getElementById('confirmBeneficiary').textContent = `${selectedBeneficiary.nameAr} (${selectedBeneficiary.nameEn})`;
+            document.getElementById('confirmCountry').textContent = country;
+            document.getElementById('confirmAmount').textContent = amount.toFixed(2) + ' د.أ';
+            document.getElementById('confirmFee').textContent = feeText + ' د.أ';
+            document.getElementById('confirmTotal').textContent = totalText + ' د.أ';
+            document.getElementById('confirmRate').textContent = rateText;
+            document.getElementById('confirmConverted').textContent = convertedText + ' ' + ccyText;
+            document.getElementById('confirmReason').textContent = reason;
+            document.getElementById('confirmPurpose').textContent = purpose;
+
+            // عرض الـ modal
+            document.getElementById('confirmationModal').style.display = 'flex';
+        }
+
+        function closeConfirmationModal() {
+            document.getElementById('confirmationModal').style.display = 'none';
+        }
+
+        async function confirmAndSubmitRemittance() {
+            // إخفاء الـ modal
+            closeConfirmationModal();
+
+            const country = document.getElementById('country').value;
+            const amount = parseFloat(document.getElementById('amount').value);
+
+            // الحصول على معرف الصندوق المسجل دخوله (المرسل)
+            const currentUserId = localStorage.getItem('userId') || sessionStorage.getItem('userId');
+            
+            console.log('🔍 User ID من localStorage:', localStorage.getItem('userId'));
+            console.log('🔍 User ID من sessionStorage:', sessionStorage.getItem('userId'));
+            console.log('🔍 User ID النهائي:', currentUserId);
+            
+            const payload = {
+                senderId: selectedSender.id,
+                beneficiaryId: selectedBeneficiary.id,
+                senderUserId: currentUserId ? parseInt(currentUserId) : null,
+                country: country,
+                amount: amount,
+                fee: 0,
+                reason: document.getElementById('reason').value,
+                purpose: document.getElementById('purpose').value
+            };
+            
+            console.log('📦 البيانات المرسلة:', JSON.stringify(payload, null, 2));
+            
+            const res = await fetch(`${API_BASE_URL}/remittances`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(payload) });
+            if (!res.ok) { 
+                const errorText = await res.text();
+                console.error('❌ خطأ في الاستجابة:', errorText);
+                alert('فشل إنشاء الحوالة: ' + errorText); 
+                return; 
+            }
+            const r = await res.json();
+            
+            console.log('✅ الاستجابة من السيرفر:', JSON.stringify(r, null, 2));
+            console.log('🔍 senderUserId في الاستجابة:', r.senderUserId);
+            
+            // حفظ آخر حوالة منشأة لاستخدامها في الطباعة لاحقاً
+            window.lastCreatedRemittance = r;
+            alert('تم إنشاء الحوالة. الرقم المرجعي: ' + r.reference + '\nالحالة: ' + r.status);
+            printReceipt(r, 'send');
+            const result = document.getElementById('createResult');
+            if (result) {
+                result.classList.remove('hidden');
+                document.getElementById('crRef').textContent = r.reference;
+                document.getElementById('crStatus').textContent = mapStatusToArabic(r.status);
+                document.getElementById('crCreatedAt').textContent = formatDate(r.createdAt);
+                document.getElementById('crSender').textContent = `${selectedSender.nameAr} (${selectedSender.nameEn})`;
+                document.getElementById('crBeneficiary').textContent = `${selectedBeneficiary.nameAr} (${selectedBeneficiary.nameEn})`;
+                document.getElementById('crCountry').textContent = document.getElementById('country').value;
+                document.getElementById('crAmount').textContent = r.amount?.toFixed(2) ?? '0.00';
+                document.getElementById('crFee').textContent = r.fee?.toFixed(2) ?? '0.00';
+                document.getElementById('crReason').textContent = r.reason;
+                document.getElementById('crPurpose').textContent = r.purpose;
+                
+                // حساب الإجمالي
+                const total = (r.amount || 0) + (r.fee || 0);
+                document.getElementById('crTotal').textContent = total.toFixed(2);
+                
+                // احصل على سعر الصرف والعملة
+                try {
+                    const rateRes = await fetch(`${API_BASE_URL}/exchange-rates/${encodeURIComponent(r.country)}`);
+                    if (rateRes.ok) {
+                        const rateJson = await rateRes.json();
+                        const rate = Number(rateJson.rate || 0);
+                        const currency = rateJson.currency || '';
+                        if (rate > 0) {
+                            document.getElementById('crExchangeRate').textContent = rate.toFixed(4);
+                            document.getElementById('crCurrency').textContent = currency;
+                            const convertedAmount = (r.amount / rate).toFixed(2);
+                            document.getElementById('crConvertedAmount').textContent = `${convertedAmount} ${currency}`;
+                        } else {
+                            document.getElementById('crExchangeRate').textContent = '—';
+                            document.getElementById('crCurrency').textContent = '—';
+                            document.getElementById('crConvertedAmount').textContent = '—';
+                        }
+                    } else {
+                        document.getElementById('crExchangeRate').textContent = '—';
+                        document.getElementById('crCurrency').textContent = '—';
+                        document.getElementById('crConvertedAmount').textContent = '—';
+                    }
+                } catch (e) {
+                    document.getElementById('crExchangeRate').textContent = '—';
+                    document.getElementById('crCurrency').textContent = '—';
+                    document.getElementById('crConvertedAmount').textContent = '—';
+                }
+            }
+        }
+
+        function printCreatedReceipt() {
+            if (window.lastCreatedRemittance) {
+                printReceipt(window.lastCreatedRemittance, 'send');
+            } else {
+                alert('لا يوجد إيصال متاح للطباعة');
+            }
+        }
+
+
+        async function printReceipt(remittance, type) {
+            const logoSrc = 'images/alawneh.png';
+            // استخدام التاريخ الميلادي بدلاً من الهجري
+            const receiptDate = new Date().toLocaleDateString('ar-SA', { 
+                year: 'numeric', 
+                month: 'long', 
+                day: 'numeric', 
+                hour: '2-digit', 
+                minute: '2-digit',
+                calendar: 'gregory' // استخدام التقويم الميلادي
+            });
+            const voucherType = type === 'send' ? 'مستند قبض' : 'مستند صرف';
+
+            // احضر سعر الصرف والعملة للدولة
+            let exchangeRate = '—';
+            let currency = '';
+            let convertedAmount = '—';
+            try {
+                const rateRes = await fetch(`${API_BASE_URL}/exchange-rates/${encodeURIComponent(remittance.country)}`);
+                if (rateRes.ok) {
+                    const rateJson = await rateRes.json();
+                    const rate = Number(rateJson.rate || 0);
+                    currency = rateJson.currency || '';
+                    if (rate > 0) {
+                        exchangeRate = rate.toFixed(4);
+                        convertedAmount = (remittance.amount / rate).toFixed(2);
+                    }
+                }
+            } catch (e) {
+                console.error('Error fetching exchange rate for receipt:', e);
+            }
+
+            const total = (remittance.amount + remittance.fee).toFixed(2);
+
+            // الحصول على أسماء المرسل والمستفيد من المتغيرات المحلية
+            const senderName = selectedSender ? `${selectedSender.nameAr} (${selectedSender.nameEn})` : 'غير محدد';
+            const beneficiaryName = selectedBeneficiary ? `${selectedBeneficiary.nameAr} (${selectedBeneficiary.nameEn})` : 'غير محدد';
+            
+            // الحصول على اسم الصندوق المرسل من معلومات المستخدم المسجل
+            const cashierName = localStorage.getItem('name') || sessionStorage.getItem('name') || 'غير محدد';
+
+            const receiptContent = `
+                <div style="font-family: 'Arial', sans-serif; direction: rtl; text-align: right; padding: 8px; border: 1px solid #007bff; width: 90mm; margin: 0 auto; background: #ffffff; font-size: 9px;">
+                    <div style="text-align: center; margin-bottom: 8px;">
+                        <img src="${logoSrc}" alt="Alawneh Logo" style="width: 80px; height: auto; display: block; margin: 0 auto;">
+                        <h2 style="color: #007bff; margin-top: 4px; font-size: 11px; font-weight: bold;">شركة العلاونة للصرافة</h2>
+                        <p style="font-size: 10px; color: #007bff; font-weight: bold; margin: 2px 0;">${voucherType}</p>
+                    </div>
+                    
+                    <div style="background: #ffffff; padding: 4px; border-radius: 3px; margin-bottom: 6px; border: 1px solid #dee2e6;">
+                        <div style="margin-bottom: 3px; font-size: 8px;">
+                            <strong style="color: #6c757d; font-size: 9px;">التاريخ:</strong> 
+                            <span style="font-size: 9px; color: #6c757d; font-weight: bold;">${receiptDate}</span>
+                        </div>
+                        <div style="margin-bottom: 3px; font-size: 8px;">
+                            <strong style="color: #6c757d; font-size: 9px;">الرقم المرجعي:</strong> 
+                            <span style="font-size: 9px; color: #6c757d; font-weight: bold;">${remittance.reference}</span>
+                        </div>
+                        <div style="font-size: 8px;">
+                            <strong style="color: #6c757d; font-size: 9px;">الحالة:</strong> 
+                            <span style="font-size: 9px; color: #6c757d; font-weight: bold;">${mapStatusToArabic(remittance.status)}</span>
+                        </div>
+                    </div>
+                    
+                    <hr style="border: none; border-top: 1px solid #007bff; margin: 5px 0;">
+                    
+                    <div style="background: #ffffff; padding: 4px; border-radius: 3px; margin-bottom: 6px; border: 1px solid #dee2e6;">
+                        <div style="margin-bottom: 4px; font-size: 8px;">
+                            <strong style="color: #6c757d; font-size: 9px;">المرسل:</strong> 
+                            <div style="font-size: 9px; color: #6c757d; font-weight: bold; margin-top: 1px;">
+                                ${senderName}
+                            </div>
+                        </div>
+                        <div style="margin-bottom: 4px; font-size: 8px;">
+                            <strong style="color: #6c757d; font-size: 9px;">المستفيد:</strong> 
+                            <div style="font-size: 9px; color: #6c757d; font-weight: bold; margin-top: 1px;">
+                                ${beneficiaryName}
+                            </div>
+                        </div>
+                        <div style="margin-bottom: 4px; font-size: 8px;">
+                            <strong style="color: #6c757d; font-size: 9px;">الدولة:</strong> 
+                            <span style="font-size: 9px; color: #6c757d; font-weight: bold;">${getCountryLabel(remittance.country) || remittance.country}</span>
+                        </div>
+                        <div style="margin-bottom: 4px; font-size: 8px;">
+                            <strong style="color: #6c757d; font-size: 9px;">السبب:</strong> 
+                            <span style="font-size: 9px; color: #6c757d; font-weight: bold;">${remittance.reason || '—'}</span>
+                        </div>
+                        <div style="margin-bottom: 4px; font-size: 8px;">
+                            <strong style="color: #6c757d; font-size: 9px;">الصندوق المرسل:</strong> 
+                            <span style="font-size: 9px; color: #6c757d; font-weight: bold;">${cashierName}</span>
+                        </div>
+                        <div style="font-size: 8px;">
+                            <strong style="color: #6c757d; font-size: 9px;">الغاية:</strong> 
+                            <span style="font-size: 9px; color: #6c757d; font-weight: bold;">${remittance.purpose || '—'}</span>
+                        </div>
+                    </div>
+                    
+                    <hr style="border: none; border-top: 1px solid #007bff; margin: 5px 0;">
+                    
+                    <div style="background: #ffffff; padding: 4px; border-radius: 3px; margin-bottom: 6px; border: 1px solid #dee2e6;">
+                        <div style="margin-bottom: 3px; font-size: 8px;">
+                            <strong style="color: #6c757d; font-size: 9px;">المبلغ:</strong> 
+                            <span style="font-size: 10px; color: #6c757d; font-weight: bold;">${remittance.amount.toFixed(2)} د.أ</span>
+                        </div>
+                        <div style="margin-bottom: 3px; font-size: 8px;">
+                            <strong style="color: #6c757d; font-size: 9px;">العمولة:</strong> 
+                            <span style="font-size: 10px; color: #6c757d; font-weight: bold;">${remittance.fee.toFixed(2)} د.أ</span>
+                        </div>
+                        <div style="font-size: 9px; background: #6c757d; color: white; padding: 3px; border-radius: 2px; text-align: center;">
+                            <strong style="font-size: 10px;">الإجمالي: ${total} د.أ</strong>
+                        </div>
+                    </div>
+                    
+                    ${exchangeRate !== '—' ? `
+                    <hr style="border: none; border-top: 1px solid #007bff; margin: 5px 0;">
+                    
+                    <div style="background: #ffffff; padding: 4px; border-radius: 3px; margin-bottom: 6px; border: 1px solid #dee2e6;">
+                        <div style="margin-bottom: 3px; font-size: 8px;">
+                            <strong style="color: #6c757d; font-size: 9px;">سعر الصرف:</strong> 
+                            <span style="font-size: 9px; color: #6c757d; font-weight: bold;">${exchangeRate}</span>
+                        </div>
+                        <div style="font-size: 9px; background: #6c757d; color: white; padding: 3px; border-radius: 2px; text-align: center;">
+                            <strong style="font-size: 10px;">مبلغ الحوالة بالعملة: ${convertedAmount} ${currency}</strong>
+                        </div>
+                    </div>
+                    ` : ''}
+                    
+                    <div style="text-align: center; margin-top: 8px; font-size: 8px; color: #6c757d; font-weight: bold; background: #ffffff; padding: 4px; border-radius: 3px; border: 1px solid #dee2e6;">
+                        شكراً لاختياركم شركة العلاونة للصرافة
+                    </div>
+                </div>
+            `;
+
+            const printWindow = window.open('', '_blank');
+            printWindow.document.write(receiptContent);
+            printWindow.document.close();
+            printWindow.print();
+        }
+
+        function formatDate(dateString) {
+            if (!dateString) return '';
+            const date = new Date(dateString);
+            // إضافة 3 ساعات لتصحيح المنطقة الزمنية (UTC+3)
+            date.setHours(date.getHours() + 3);
+            const year = date.getFullYear();
+            const month = (date.getMonth() + 1).toString().padStart(2, '0');
+            const day = date.getDate().toString().padStart(2, '0');
+            let hours = date.getHours();
+            const minutes = date.getMinutes().toString().padStart(2, '0');
+            const ampm = hours >= 12 ? 'PM' : 'AM';
+            hours = hours % 12;
+            hours = hours ? hours : 12; // the hour '0' should be '12'
+            const strHours = hours.toString().padStart(2, '0');
+
+            return `${month}/${day}/${year} ${strHours}:${minutes} ${ampm}`;
+        }
+        
+        function mapStatusToArabic(status) {
+            switch (status) {
+                case 'Payment pending': return 'بانتظار الدفع';
+                case 'Paid': return 'مدفوعة';
+                case 'Pending Approval': return 'قيد الموافقة';
+                default: return status;
+            }
+        }
+
+        document.addEventListener('DOMContentLoaded', () => {
+            // املأ قائمة الدول من المصدر الموحد
+            populateCountryDropdown('country', true);
+            updateFee();
+            const countrySelect = document.getElementById('country');
+            if (countrySelect) countrySelect.addEventListener('change', updateFee);
+        });
+    </script>
+</head>
+<body>
+    <div class="container">
+        <header class="header">
+            <div style="display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap;">
+                <div class="logo">
+                    <i class="fas fa-money-bill-transfer"></i>
+                    <h1>إرسال حوالة مالية</h1>
+                </div>
+                <a href="index.html" style="color: #ffffff; text-decoration: none; font-size: 16px; display: flex; align-items: center; gap: 6px; transition: opacity 0.3s;">
+                    <i class="fas fa-home"></i>
+                    <span>العودة للصفحة الرئيسية</span>
+                </a>
+            </div>
+        </header>
+
+        <main class="main-content">
+            <div class="card">
+                <h2><i class="fas fa-user"></i> اختيار المرسل</h2>
+                <div>
+                    <input id="senderQuery" type="text" placeholder="ابحث بالاسم العربي/الإنجليزي أو الرقم الوطني" oninput="search('sender')" style="width: 100%;">
+                    <div id="senderSelected" class="selected-party"></div>
+                </div>
+                <div id="senderResults" class="results"></div>
+            </div>
+
+            <div class="card">
+                <h2><i class="fas fa-user-check"></i> اختيار المستفيد</h2>
+                <div>
+                    <div style="display: flex; gap: 10px; align-items: center;">
+                        <input id="beneficiaryQuery" type="text" placeholder="ابحث بالاسم العربي/الإنجليزي أو الرقم الوطني" oninput="search('beneficiary')" style="flex: 1;">
+                        <button class="btn btn-primary" onclick="toggleManualBeneficiary()" title="إدخال مستفيد يدوي"><i class="fas fa-user-plus"></i></button>
+                    </div>
+                    <div id="beneficiarySelected" class="selected-party"></div>
+                </div>
+                <div id="beneficiaryResults" class="results"></div>
+                <div id="manualBeneficiarySection" class="hidden" style="margin-top: 12px;">
+                    <div class="manual-grid">
+                        <div class="form-group"><label>الرقم الوطني</label><input id="mbNationalId" type="text"></div>
+                        <div class="form-group"><label>الاسم بالعربية</label><input id="mbNameAr" type="text"></div>
+                        <div class="form-group"><label>الاسم بالإنجليزية</label><input id="mbNameEn" type="text"></div>
+                        <div class="form-group"><label>رقم الهاتف</label><input id="mbPhone" type="tel"></div>
+                        <div class="form-group"><label>تاريخ الميلاد</label><input id="mbBirthDate" type="date"></div>
+                        <div class="form-group"><label>العنوان</label><input id="mbAddress" type="text"></div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="card">
+                <h2><i class="fas fa-globe"></i> تفاصيل الحوالة</h2>
+                <div class="grid-2">
+                    <div class="form-group">
+                        <label>الدولة</label>
+                        <select id="country"></select>
+                    </div>
+                    <div class="form-group">
+                        <label>مبلغ الحوالة (د.أ)</label>
+                        <input id="amount" type="number" min="0" step="0.01" oninput="updateFee()">
+                    </div>
+                    <div class="form-group">
+                        <label>سبب الحوالة</label>
+                        <select id="reason">
+                            <option value="نفقات عائلية">نفقات عائلية</option>
+                            <option value="تعليم">تعليم</option>
+                            <option value="علاج">علاج</option>
+                            <option value="استثمار">استثمار</option>
+                        </select>
+                    </div>
+                    <div class="form-group">
+                        <label>الغاية من الحوالة</label>
+                        <select id="purpose">
+                            <option value="معيشة">معيشة</option>
+                            <option value="رسوم">رسوم</option>
+                            <option value="ادخار">ادخار</option>
+                            <option value="أخرى">أخرى</option>
+                        </select>
+                    </div>
+                </div>
+                <div class="remittances-fee-box" id="calcBox">
+                    <span class="label">سعر الصرف:</span> <span class="value"><span id="rate">—</span></span>
+                    <span style="margin: 0 10px;">·</span>
+                    <span class="label">العمولة:</span> <span class="value"><span id="fee">—</span> د.أ</span>
+                    <span style="margin: 0 10px;">·</span>
+                    <span class="label">الإجمالي:</span> <span class="value"><span id="total">—</span> د.أ</span>
+                    <span style="margin: 0 10px;">·</span>
+                    <span class="label">مبلغ الحوالة بالعملة:</span> <span class="value"><span id="converted">—</span> <span id="ccy"></span></span>
+                </div>
+                <div style="margin-top: 20px;">
+                    <button class="btn btn-primary" onclick="submitRemittance()"><i class="fas fa-paper-plane"></i> إرسال الحوالة</button>
+                </div>
+                <div id="createResult" class="card hidden" style="margin-top: 16px; background:#ffffff; padding:15px; border: 1px solid #dee2e6; border-radius:8px; max-width: 600px; margin-left: auto; margin-right: auto;">
+                    <div style="text-align: center; margin-bottom: 20px;">
+                        <img src="images/alawneh.png" alt="Alawneh Logo" style="width: 150px; height: auto; display: block; margin: 0 auto 10px auto;">
+                        <h3 style="color: #007bff; text-align: center; margin-bottom: 5px; font-size: 18px;">مستند قبض</h3>
+                        <h4 style="color: #6c757d; text-align: center; margin-bottom: 15px; font-size: 16px;">وصل حوالة رقم: <span id="crRef" style="color: #6c757d; font-weight: bold;"></span></h4>
+                    </div>
+                    <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 8px; font-size: 14px;">
+                        <div style="background: #ffffff; padding: 8px; border-radius: 4px; border: 1px solid #dee2e6;"><strong style="color: #6c757d;">الحالة:</strong> <span id="crStatus" style="color: #6c757d;"></span></div>
+                        <div style="background: #ffffff; padding: 8px; border-radius: 4px; border: 1px solid #dee2e6;"><strong style="color: #6c757d;">تاريخ الإرسال:</strong> <span id="crCreatedAt" style="color: #6c757d;"></span></div>
+                        <div style="background: #ffffff; padding: 8px; border-radius: 4px; border: 1px solid #dee2e6;"><strong style="color: #6c757d;">المرسل:</strong> <span id="crSender" style="color: #6c757d;"></span></div>
+                        <div style="background: #ffffff; padding: 8px; border-radius: 4px; border: 1px solid #dee2e6;"><strong style="color: #6c757d;">المستفيد:</strong> <span id="crBeneficiary" style="color: #6c757d;"></span></div>
+                        <div style="background: #ffffff; padding: 8px; border-radius: 4px; border: 1px solid #dee2e6;"><strong style="color: #6c757d;">الدولة:</strong> <span id="crCountry" style="color: #6c757d;"></span></div>
+                        <div style="background: #ffffff; padding: 8px; border-radius: 4px; border: 1px solid #dee2e6;"><strong style="color: #6c757d;">المبلغ:</strong> <span id="crAmount" style="color: #6c757d;"></span> د.أ</div>
+                        <div style="background: #ffffff; padding: 8px; border-radius: 4px; border: 1px solid #dee2e6;"><strong style="color: #6c757d;">العمولة:</strong> <span id="crFee" style="color: #6c757d;"></span> د.أ</div>
+                        <div style="background: #ffffff; padding: 8px; border-radius: 4px; border: 1px solid #dee2e6;"><strong style="color: #6c757d;">سعر الصرف:</strong> <span id="crExchangeRate" style="color: #6c757d;"></span></div>
+                        <div style="background: #ffffff; padding: 8px; border-radius: 4px; border: 1px solid #dee2e6;"><strong style="color: #6c757d;">العملة:</strong> <span id="crCurrency" style="color: #6c757d;"></span></div>
+                        <div style="background: #ffffff; padding: 8px; border-radius: 4px; border: 1px solid #dee2e6;"><strong style="color: #6c757d;">الإجمالي:</strong> <span id="crTotal" style="color: #6c757d;"></span> د.أ</div>
+                        <div style="background: #ffffff; padding: 8px; border-radius: 4px; border: 1px solid #dee2e6;"><strong style="color: #6c757d;">مبلغ الحوالة بالعملة:</strong> <span id="crConvertedAmount" style="color: #6c757d;"></span></div>
+                        <div style="background: #ffffff; padding: 8px; border-radius: 4px; border: 1px solid #dee2e6;"><strong style="color: #6c757d;">السبب:</strong> <span id="crReason" style="color: #6c757d;"></span></div>
+                        <div style="background: #ffffff; padding: 8px; border-radius: 4px; border: 1px solid #dee2e6;"><strong style="color: #6c757d;">الغاية:</strong> <span id="crPurpose" style="color: #6c757d;"></span></div>
+                    </div>
+                    <div style="text-align: center; margin-top: 15px;">
+                        <button class="btn btn-secondary" onclick="printCreatedReceipt()" style="font-size: 14px; padding: 8px 16px;"><i class="fas fa-print"></i> طباعة الوصل</button>
+                    </div>
+                </div>
+            </div>
+        </main>
+
+        <footer class="footer">
+            <p>&copy; 2025 نظام Alawneh-Eway. جميع الحقوق محفوظة.</p>
+        </footer>
+    </div>
+
+    <!-- Modal التأكيد على إرسال الحوالة -->
+    <div id="confirmationModal" class="modal" style="display: none;">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h2><i class="fas fa-check-circle"></i> تأكيد إرسال الحوالة</h2>
+                <span class="close" onclick="closeConfirmationModal()">&times;</span>
+            </div>
+            <div class="modal-body">
+                <div style="background: #f8f9fa; padding: 20px; border-radius: 8px; margin-bottom: 15px;">
+                    <h3 style="color: #007bff; margin-top: 0; margin-bottom: 15px; text-align: center;">
+                        <i class="fas fa-info-circle"></i> يرجى مراجعة تفاصيل الحوالة قبل الإرسال
+                    </h3>
+                    
+                    <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 15px; margin-bottom: 15px;">
+                        <div style="background: white; padding: 12px; border-radius: 6px; border: 1px solid #dee2e6;">
+                            <div style="color: #6c757d; font-size: 14px; margin-bottom: 5px;">
+                                <i class="fas fa-user"></i> المرسل
+                            </div>
+                            <div style="color: #333; font-weight: bold; font-size: 16px;" id="confirmSender"></div>
+                        </div>
+                        
+                        <div style="background: white; padding: 12px; border-radius: 6px; border: 1px solid #dee2e6;">
+                            <div style="color: #6c757d; font-size: 14px; margin-bottom: 5px;">
+                                <i class="fas fa-user-check"></i> المستفيد
+                            </div>
+                            <div style="color: #333; font-weight: bold; font-size: 16px;" id="confirmBeneficiary"></div>
+                        </div>
+                    </div>
+
+                    <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 15px; margin-bottom: 15px;">
+                        <div style="background: white; padding: 12px; border-radius: 6px; border: 1px solid #dee2e6;">
+                            <div style="color: #6c757d; font-size: 14px; margin-bottom: 5px;">
+                                <i class="fas fa-globe"></i> الدولة
+                            </div>
+                            <div style="color: #333; font-weight: bold; font-size: 16px;" id="confirmCountry"></div>
+                        </div>
+                        
+                        <div style="background: white; padding: 12px; border-radius: 6px; border: 1px solid #dee2e6;">
+                            <div style="color: #6c757d; font-size: 14px; margin-bottom: 5px;">
+                                <i class="fas fa-money-bill-wave"></i> مبلغ الحوالة
+                            </div>
+                            <div style="color: #007bff; font-weight: bold; font-size: 18px;" id="confirmAmount"></div>
+                        </div>
+                    </div>
+
+                    <div style="background: white; padding: 15px; border-radius: 6px; border: 1px solid #dee2e6; margin-bottom: 15px;">
+                        <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 10px;">
+                            <div>
+                                <span style="color: #6c757d; font-size: 14px;"><i class="fas fa-coins"></i> العمولة:</span>
+                                <span style="color: #333; font-weight: bold; margin-right: 5px;" id="confirmFee"></span>
+                            </div>
+                            <div>
+                                <span style="color: #6c757d; font-size: 14px;"><i class="fas fa-calculator"></i> الإجمالي:</span>
+                                <span style="color: #333; font-weight: bold; margin-right: 5px;" id="confirmTotal"></span>
+                            </div>
+                            <div>
+                                <span style="color: #6c757d; font-size: 14px;"><i class="fas fa-exchange-alt"></i> سعر الصرف:</span>
+                                <span style="color: #333; font-weight: bold; margin-right: 5px;" id="confirmRate"></span>
+                            </div>
+                            <div>
+                                <span style="color: #6c757d; font-size: 14px;"><i class="fas fa-dollar-sign"></i> المبلغ بالعملة:</span>
+                                <span style="color: #007bff; font-weight: bold; margin-right: 5px;" id="confirmConverted"></span>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 15px;">
+                        <div style="background: white; padding: 12px; border-radius: 6px; border: 1px solid #dee2e6;">
+                            <div style="color: #6c757d; font-size: 14px; margin-bottom: 5px;">
+                                <i class="fas fa-question-circle"></i> سبب الحوالة
+                            </div>
+                            <div style="color: #333; font-weight: bold;" id="confirmReason"></div>
+                        </div>
+                        
+                        <div style="background: white; padding: 12px; border-radius: 6px; border: 1px solid #dee2e6;">
+                            <div style="color: #6c757d; font-size: 14px; margin-bottom: 5px;">
+                                <i class="fas fa-bullseye"></i> الغاية من الحوالة
+                            </div>
+                            <div style="color: #333; font-weight: bold;" id="confirmPurpose"></div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button class="btn btn-success" onclick="confirmAndSubmitRemittance()">
+                    <i class="fas fa-paper-plane"></i> تأكيد وإرسال الحوالة
+                </button>
+                <button class="btn btn-secondary" onclick="closeConfirmationModal()">
+                    <i class="fas fa-times"></i> إلغاء
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <script src="js/app.js"></script>
+</body>
+</html>
+
+

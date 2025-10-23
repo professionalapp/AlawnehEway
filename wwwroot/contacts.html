@@ -1,0 +1,813 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>خدمة الزبائن - Alawneh-Eway</title>
+    <link rel="stylesheet" href="css/style.css">
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
+    <style>
+        .table {
+            width: 100%;
+            border-collapse: collapse;
+            margin-top: 15px;
+        }
+        .table th, .table td {
+            border: 1px solid #dee2e6;
+            padding: 10px;
+            text-align: right;
+            color: #6c757d;
+        }
+        .table thead th {
+            background-color: transparent;
+            color: #6c757d;
+            font-weight: bold;
+        }
+        .table tbody tr:nth-of-type(odd) {
+            background-color: transparent;
+        }
+        .badge-party-type { padding: 4px 8px; font-weight: bold; color: #6c757d; display: inline-block; }
+        .badge-sender { color: #6c757d; }
+        .badge-beneficiary { color: #6c757d; }
+        .badge-status { padding: 4px 8px; font-weight: bold; color: #6c757d; display: inline-block; }
+        .badge-pending { color: #6c757d; }
+        .badge-paid { color: #6c757d; }
+        
+        /* تحسين عرض التاريخ مع الوقت */
+        .datetime-cell {
+            white-space: nowrap;
+            font-size: 13px;
+            color: #495057;
+        }
+        
+        .datetime-cell .date-part {
+            display: inline-block;
+            font-weight: 600;
+        }
+        
+        .datetime-cell .time-part {
+            display: inline-block;
+            color: #6c757d;
+            font-size: 12px;
+            margin-right: 5px;
+        }
+        
+        /* تحسين تصميم حقل البحث عن العميل */
+        .search-container {
+            position: relative;
+            margin-bottom: 20px;
+        }
+        
+        #unifiedSearch {
+            width: 100%;
+            height: 50px;
+            font-size: 18px;
+            padding: 12px 20px 12px 50px;
+            border: 2px solid #dee2e6;
+            border-radius: 12px;
+            transition: all 0.3s ease;
+            background: #ffffff;
+            color: #495057;
+        }
+        
+        #unifiedSearch:focus {
+            outline: none;
+            border-color: #007bff;
+            box-shadow: 0 0 0 4px rgba(0, 123, 255, 0.15);
+            transform: translateY(-2px);
+        }
+        
+        #unifiedSearch::placeholder {
+            color: #adb5bd;
+        }
+        
+        .search-icon {
+            position: absolute;
+            left: 18px;
+            top: 50%;
+            transform: translateY(-50%);
+            color: #6c757d;
+            font-size: 20px;
+            pointer-events: none;
+            transition: color 0.3s;
+        }
+        
+        #unifiedSearch:focus + .search-icon {
+            color: #007bff;
+        }
+    </style>
+    <script>
+        const API_BASE_URL = 'http://localhost:5216';
+
+        // دوال الفاليديشن
+        function validateNationalId(nationalId) {
+            if (!nationalId || nationalId.trim() === '') {
+                return 'الرقم الوطني مطلوب';
+            }
+            if (!/^\d+$/.test(nationalId.trim())) {
+                return 'الرقم الوطني يجب أن يحتوي على أرقام فقط';
+            }
+            return null;
+        }
+
+        function validateArabicName(name) {
+            if (!name || name.trim() === '') {
+                return 'الاسم العربي مطلوب';
+            }
+            // التحقق من أن الاسم يحتوي على أحرف عربية فقط
+            if (!/^[\u0600-\u06FF\s]+$/.test(name.trim())) {
+                return 'الاسم العربي يجب أن يحتوي على أحرف عربية فقط';
+            }
+            return null;
+        }
+
+        function validateEnglishName(name) {
+            if (!name || name.trim() === '') {
+                return 'الاسم الإنجليزي مطلوب';
+            }
+            // التحقق من أن الاسم يحتوي على أحرف إنجليزية فقط
+            if (!/^[a-zA-Z\s]+$/.test(name.trim())) {
+                return 'الاسم الإنجليزي يجب أن يحتوي على أحرف إنجليزية فقط';
+            }
+            return null;
+        }
+
+        function validatePhoneNumber(phone) {
+            if (!phone || phone.trim() === '') {
+                return 'رقم الهاتف مطلوب';
+            }
+            // التحقق من أن رقم الهاتف يحتوي على أرقام فقط
+            if (!/^\d+$/.test(phone.trim())) {
+                return 'رقم الهاتف يجب أن يحتوي على أرقام فقط';
+            }
+            return null;
+        }
+
+        // دوال منع إدخال الأحرف غير المرغوبة
+        function allowOnlyNumbers(event) {
+            const char = String.fromCharCode(event.which);
+            if (!/[0-9]/.test(char)) {
+                event.preventDefault();
+                return false;
+            }
+        }
+
+        function allowOnlyArabic(event) {
+            const char = String.fromCharCode(event.which);
+            // السماح بالأحرف العربية والمسافات فقط
+            if (!/[\u0600-\u06FF\s]/.test(char) && event.which !== 8 && event.which !== 46) {
+                event.preventDefault();
+                return false;
+            }
+        }
+
+        function allowOnlyEnglish(event) {
+            const char = String.fromCharCode(event.which);
+            // السماح بالأحرف الإنجليزية والمسافات فقط
+            if (!/[a-zA-Z\s]/.test(char) && event.which !== 8 && event.which !== 46) {
+                event.preventDefault();
+                return false;
+            }
+        }
+
+        // دالة لتنظيف البيانات عند اللصق
+        function cleanPastedData(event, type) {
+            setTimeout(() => {
+                const input = event.target;
+                let value = input.value;
+                
+                switch(type) {
+                    case 'numbers':
+                        value = value.replace(/[^0-9]/g, '');
+                        break;
+                    case 'arabic':
+                        value = value.replace(/[^\u0600-\u06FF\s]/g, '');
+                        break;
+                    case 'english':
+                        value = value.replace(/[^a-zA-Z\s]/g, '');
+                        break;
+                }
+                
+                if (input.value !== value) {
+                    input.value = value;
+                }
+            }, 10);
+        }
+
+        // دالة لربط الفاليديشن بالحقول
+        function setupValidation() {
+            // ربط الفاليديشن بحقول الرقم الوطني
+            const nationalIdInputs = document.querySelectorAll('input[id*="NationalId"]');
+            nationalIdInputs.forEach(input => {
+                input.addEventListener('keypress', allowOnlyNumbers);
+                input.addEventListener('paste', (e) => cleanPastedData(e, 'numbers'));
+            });
+
+            // ربط الفاليديشن بحقول الأسماء العربية
+            const arabicNameInputs = document.querySelectorAll('input[id*="NameAr"]');
+            arabicNameInputs.forEach(input => {
+                input.addEventListener('keypress', allowOnlyArabic);
+                input.addEventListener('paste', (e) => cleanPastedData(e, 'arabic'));
+            });
+
+            // ربط الفاليديشن بحقول الأسماء الإنجليزية
+            const englishNameInputs = document.querySelectorAll('input[id*="NameEn"]');
+            englishNameInputs.forEach(input => {
+                input.addEventListener('keypress', allowOnlyEnglish);
+                input.addEventListener('paste', (e) => cleanPastedData(e, 'english'));
+            });
+
+            // ربط الفاليديشن بحقول أرقام الهاتف
+            const phoneInputs = document.querySelectorAll('input[id*="Phone"]');
+            phoneInputs.forEach(input => {
+                input.addEventListener('keypress', allowOnlyNumbers);
+                input.addEventListener('paste', (e) => cleanPastedData(e, 'numbers'));
+            });
+        }
+
+        // تشغيل الفاليديشن عند تحميل الصفحة
+        document.addEventListener('DOMContentLoaded', setupValidation);
+
+        async function addParty(type) {
+            const prefix = type === 'Sender' ? 'sender' : 'beneficiary';
+            
+            // جمع البيانات
+            const nationalId = document.getElementById(prefix + 'NationalId').value.trim();
+            const nameAr = document.getElementById(prefix + 'NameAr').value.trim();
+            const nameEn = document.getElementById(prefix + 'NameEn').value.trim();
+            const phoneNumber = document.getElementById(prefix + 'Phone').value.trim();
+            const birthDate = document.getElementById(prefix + 'BirthDate').value;
+            const address = document.getElementById(prefix + 'Address').value.trim();
+            
+            // تطبيق الفاليديشن
+            const nationalIdError = validateNationalId(nationalId);
+            if (nationalIdError) {
+                alert(nationalIdError);
+                return;
+            }
+            
+            const nameArError = validateArabicName(nameAr);
+            if (nameArError) {
+                alert(nameArError);
+                return;
+            }
+            
+            const nameEnError = validateEnglishName(nameEn);
+            if (nameEnError) {
+                alert(nameEnError);
+                return;
+            }
+            
+            const phoneError = validatePhoneNumber(phoneNumber);
+            if (phoneError) {
+                alert(phoneError);
+                return;
+            }
+            
+            // التحقق من تاريخ الميلاد
+            if (!birthDate) {
+                alert('تاريخ الميلاد مطلوب');
+                return;
+            }
+            
+            const payload = {
+                nationalId: nationalId,
+                nameAr: nameAr,
+                nameEn: nameEn,
+                phoneNumber: phoneNumber,
+                birthDate: birthDate,
+                address: address,
+                type: type === 'Sender' ? 1 : 2
+            };
+            
+            try {
+                const res = await fetch(`${API_BASE_URL}/parties`, { 
+                    method: 'POST', 
+                    headers: { 'Content-Type': 'application/json' }, 
+                    body: JSON.stringify(payload) 
+                });
+                if (!res.ok) { 
+                    alert('خطأ في الإضافة'); 
+                    return; 
+                }
+                alert('تم الحفظ بنجاح');
+                
+                // مسح النموذج بعد الحفظ الناجح
+                document.getElementById(prefix + 'NationalId').value = '';
+                document.getElementById(prefix + 'NameAr').value = '';
+                document.getElementById(prefix + 'NameEn').value = '';
+                document.getElementById(prefix + 'Phone').value = '';
+                document.getElementById(prefix + 'BirthDate').value = '';
+                document.getElementById(prefix + 'Address').value = '';
+                
+            } catch (error) {
+                console.error('خطأ في الاتصال:', error);
+                alert('خطأ في الاتصال بالخادم');
+            }
+        }
+
+        async function unifiedSearch() {
+            const q = document.getElementById('unifiedSearch').value.trim();
+            const unifiedResultsContainer = document.getElementById('unifiedResultsContainer');
+            const remittancesContainer = document.getElementById('remittancesContainer');
+
+            if (!q) {
+                document.getElementById('unifiedResults').innerHTML = '';
+                document.getElementById('remittancesBody').innerHTML = '';
+                unifiedResultsContainer.style.display = 'none';
+                remittancesContainer.style.display = 'none';
+                return;
+            }
+            const res = await fetch(`${API_BASE_URL}/parties/search?q=${encodeURIComponent(q)}`);
+            const list = res.ok ? await res.json() : [];
+            const tbody = document.getElementById('unifiedResults');
+            if (!list.length) {
+                tbody.innerHTML = `<tr><td colspan="8" style="text-align: center; color: #333;">لا توجد نتائج مطابقة</td></tr>`;
+                document.getElementById('remittancesBody').innerHTML = '';
+                unifiedResultsContainer.style.display = 'block';
+                remittancesContainer.style.display = 'none';
+                return;
+            }
+            tbody.innerHTML = list.map(p => `
+                <tr>
+                    <td>${p.id}</td>
+                    <td>${p.nationalId}</td>
+                    <td>${p.nameAr}</td>
+                    <td>${p.nameEn}</td>
+                    <td>${p.phoneNumber}</td>
+                    <td>${formatDate(p.birthDate)}</td>
+                    <td>${p.address}</td>
+                    <td>${p.lastModifiedAt ? formatDateWithTime(p.lastModifiedAt, true) : '<span style="color: #adb5bd; font-style: italic;">لم يتم التعديل</span>'}</td>
+                    <td>
+                        <button class="btn btn-sm btn-primary" onclick="editParty(${p.id})" title="تعديل">
+                            <i class="fas fa-edit"></i>
+                        </button>
+                        <button class="btn btn-sm btn-info" onclick="showModificationHistory(${p.id})" title="تاريخ التعديلات">
+                            <i class="fas fa-history"></i>
+                        </button>
+                        <button class="btn btn-sm btn-danger" onclick="deleteParty(${p.id}, '${p.nameAr}')" title="حذف">
+                            <i class="fas fa-trash"></i>
+                        </button>
+                    </td>
+                </tr>
+            `).join('');
+            unifiedResultsContainer.style.display = 'block';
+        }
+        async function loadRemittancesFor(partyId) {
+            const remittancesContainer = document.getElementById('remittancesContainer');
+            const res = await fetch(`${API_BASE_URL}/parties/${partyId}/remittances`);
+            const list = res.ok ? await res.json() : [];
+            const tbody = document.getElementById('remittancesBody');
+            if (!list.length) {
+                tbody.innerHTML = `<tr><td colspan="10" style="text-align:center;color:#333;">لا توجد حوالات</td></tr>`;
+                remittancesContainer.style.display = 'block'; // Show container with no remittances message
+                return;
+            }
+            tbody.innerHTML = list.map(r => {
+                let statusBadgeClass = '';
+                let statusText = mapStatusToArabic(r.status);
+
+                if (r.status === 'Payment pending') {
+                    statusBadgeClass = 'badge-pending';
+                } else if (r.status === 'Paid') {
+                    statusBadgeClass = 'badge-paid';
+                }
+
+                return `
+                    <tr>
+                        <td><span class="pill">${r.reference}</span></td>
+                        <td><span class="badge-status ${statusBadgeClass}">${statusText}</span></td>
+                        <td>${r.senderId === partyId ? 'مرسل' : 'مستفيد'}</td>
+                        <td>${r.sender?.nameAr ?? ''}</td>
+                        <td>${r.beneficiary?.nameAr ?? ''}</td>
+                        <td>${r.country}</td>
+                        <td>${r.amount.toFixed(2)} د.أ</td>
+                        <td>${r.fee.toFixed(2)} د.أ</td>
+                        <td>${formatDate(r.createdAt)}</td>
+                        <td>${r.paidAt ? formatDate(r.paidAt) : '-'}</td>
+                    </tr>
+                `;
+            }).join('');
+        }
+
+        function formatDate(dateString) {
+            if (!dateString) return '';
+            const date = new Date(dateString);
+            // إضافة 3 ساعات لتصحيح المنطقة الزمنية
+            date.setHours(date.getHours() + 3);
+            const year = date.getFullYear();
+            const month = (date.getMonth() + 1).toString().padStart(2, '0');
+            const day = date.getDate().toString().padStart(2, '0');
+
+            return `${day}/${month}/${year}`;
+        }
+        
+        function formatDateWithTime(dateString, useHTML = false) {
+            if (!dateString) return '';
+            const date = new Date(dateString);
+            // إضافة 3 ساعات لتصحيح المنطقة الزمنية (UTC+3)
+            date.setHours(date.getHours() + 3);
+            const year = date.getFullYear();
+            const month = (date.getMonth() + 1).toString().padStart(2, '0');
+            const day = date.getDate().toString().padStart(2, '0');
+            let hours = date.getHours();
+            const minutes = date.getMinutes().toString().padStart(2, '0');
+            const seconds = date.getSeconds().toString().padStart(2, '0');
+            const ampm = hours >= 12 ? 'م' : 'ص';
+            
+            hours = hours % 12;
+            hours = hours ? hours : 12;
+            const strHours = hours.toString().padStart(2, '0');
+
+            if (useHTML) {
+                return `<div class="datetime-cell"><span class="date-part">${day}/${month}/${year}</span><br><span class="time-part"><i class="fas fa-clock"></i> ${strHours}:${minutes}:${seconds} ${ampm}</span></div>`;
+            }
+            return `${day}/${month}/${year} - ${strHours}:${minutes}:${seconds} ${ampm}`;
+        }
+        
+        function mapStatusToArabic(status) {
+            switch (status) {
+                case 'Payment pending': return 'بانتظار الدفع';
+                case 'Paid': return 'مدفوعة';
+                default: return status;
+            }
+        }
+
+        document.addEventListener('DOMContentLoaded', () => {
+            // Initial search or clear results if no query
+            unifiedSearch(); // This will clear results if input is empty initially
+        });
+
+        async function addNewParty(type) {
+            const nationalId = document.getElementById('newPartyNationalId').value.trim();
+            const nameAr = document.getElementById('newPartyNameAr').value.trim();
+            const nameEn = document.getElementById('newPartyNameEn').value.trim();
+            const phoneNumber = document.getElementById('newPartyPhone').value.trim();
+            const birthDate = document.getElementById('newPartyBirthDate').value;
+            const address = document.getElementById('newPartyAddress').value.trim();
+
+            if (!nationalId || !nameAr || !nameEn || !birthDate) {
+                alert('يرجى ملء الحقول المطلوبة: الرقم الوطني، الاسم بالعربية، الاسم بالإنجليزية، تاريخ الميلاد.');
+                return;
+            }
+
+            const payload = {
+                nationalId,
+                nameAr,
+                nameEn,
+                phoneNumber,
+                birthDate,
+                address,
+                type
+            };
+
+            try {
+                const res = await fetch(`${API_BASE_URL}/parties`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify(payload)
+                });
+
+                if (!res.ok) {
+                    const errorData = await res.json();
+                    throw new Error(errorData.message || 'فشل إضافة العميل');
+                }
+
+                alert('تم إضافة العميل بنجاح!');
+                // Clear form
+                document.getElementById('newPartyNationalId').value = '';
+                document.getElementById('newPartyNameAr').value = '';
+                document.getElementById('newPartyNameEn').value = '';
+                document.getElementById('newPartyPhone').value = '';
+                document.getElementById('newPartyBirthDate').value = '';
+                document.getElementById('newPartyAddress').value = '';
+                unifiedSearch(); // Refresh search results to include new client
+            } catch (error) {
+                alert(`خطأ: ${error.message}`);
+                console.error('Error adding new party:', error);
+            }
+        }
+
+        // متغير لحفظ معرف العميل المراد تعديله
+        let editingPartyId = null;
+
+        // فتح نموذج التعديل
+        async function editParty(partyId) {
+            try {
+                const response = await fetch(`${API_BASE_URL}/parties/${partyId}`);
+                if (!response.ok) {
+                    throw new Error('فشل في جلب بيانات العميل');
+                }
+                
+                const party = await response.json();
+                editingPartyId = partyId;
+                
+                // ملء النموذج بالبيانات الحالية
+                document.getElementById('editPartyNationalId').value = party.nationalId;
+                document.getElementById('editPartyNameAr').value = party.nameAr;
+                document.getElementById('editPartyNameEn').value = party.nameEn;
+                document.getElementById('editPartyPhone').value = party.phoneNumber;
+                document.getElementById('editPartyBirthDate').value = party.birthDate.split('T')[0]; // تحويل التاريخ
+                document.getElementById('editPartyAddress').value = party.address;
+                
+                // إظهار النموذج المنبثق
+                document.getElementById('editPartyModal').style.display = 'block';
+            } catch (error) {
+                alert(`خطأ: ${error.message}`);
+                console.error('Error loading party data:', error);
+            }
+        }
+
+        // إغلاق نموذج التعديل
+        function closeEditModal() {
+            document.getElementById('editPartyModal').style.display = 'none';
+            editingPartyId = null;
+        }
+
+        // حفظ التغييرات
+        async function savePartyChanges() {
+            if (!editingPartyId) return;
+            
+            const nationalId = document.getElementById('editPartyNationalId').value.trim();
+            const nameAr = document.getElementById('editPartyNameAr').value.trim();
+            const nameEn = document.getElementById('editPartyNameEn').value.trim();
+            const phoneNumber = document.getElementById('editPartyPhone').value.trim();
+            const birthDate = document.getElementById('editPartyBirthDate').value;
+            const address = document.getElementById('editPartyAddress').value.trim();
+
+            if (!nationalId || !nameAr || !nameEn || !birthDate) {
+                alert('يرجى ملء الحقول المطلوبة: الرقم الوطني، الاسم بالعربية، الاسم بالإنجليزية، تاريخ الميلاد.');
+                return;
+            }
+
+            // جلب النوع الحالي من البيانات الأصلية
+            const currentParty = await fetch(`${API_BASE_URL}/parties/${editingPartyId}`).then(r => r.json());
+            const type = currentParty.type;
+
+            const payload = {
+                nationalId,
+                nameAr,
+                nameEn,
+                phoneNumber,
+                birthDate,
+                address,
+                type
+            };
+
+            try {
+                const response = await fetch(`${API_BASE_URL}/parties/${editingPartyId}`, {
+                    method: 'PUT',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify(payload)
+                });
+
+                if (!response.ok) {
+                    const errorData = await response.json();
+                    throw new Error(errorData.message || 'فشل في تحديث بيانات العميل');
+                }
+
+                alert('تم تحديث بيانات العميل بنجاح!');
+                closeEditModal();
+                unifiedSearch(); // تحديث نتائج البحث
+            } catch (error) {
+                alert(`خطأ: ${error.message}`);
+                console.error('Error updating party:', error);
+            }
+        }
+
+        // حذف عميل
+        async function deleteParty(partyId, partyName) {
+            if (!confirm(`هل أنت متأكد من حذف العميل "${partyName}"؟\n\nتحذير: لا يمكن حذف عميل مرتبط بحوالات موجودة.`)) {
+                return;
+            }
+
+            try {
+                const response = await fetch(`${API_BASE_URL}/parties/${partyId}`, {
+                    method: 'DELETE'
+                });
+
+                if (!response.ok) {
+                    const errorData = await response.json();
+                    throw new Error(errorData.message || 'فشل في حذف العميل');
+                }
+
+                alert('تم حذف العميل بنجاح!');
+                unifiedSearch(); // تحديث نتائج البحث
+            } catch (error) {
+                alert(`خطأ: ${error.message}`);
+                console.error('Error deleting party:', error);
+            }
+        }
+
+        // عرض تاريخ التعديلات
+        async function showModificationHistory(partyId) {
+            try {
+                const response = await fetch(`${API_BASE_URL}/parties/${partyId}`);
+                if (!response.ok) {
+                    throw new Error('فشل في جلب بيانات العميل');
+                }
+                
+                const party = await response.json();
+                
+                // إنشاء محتوى تاريخ التعديلات
+                const historyContent = `
+                    <div style="margin-bottom: 20px;">
+                        <h3 style="color: #007bff; margin-bottom: 15px;">
+                            <i class="fas fa-user"></i> ${party.nameAr} (${party.nameEn})
+                        </h3>
+                    </div>
+                    
+                    <div style="background: #f8f9fa; padding: 15px; border-radius: 8px; margin-bottom: 15px;">
+                        <h4 style="color: #6c757d; margin-bottom: 10px;">
+                            <i class="fas fa-info-circle"></i> معلومات العميل الحالية
+                        </h4>
+                        <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 10px; font-size: 14px;">
+                            <div><strong>الرقم الوطني:</strong> ${party.nationalId}</div>
+                            <div><strong>الاسم العربي:</strong> ${party.nameAr}</div>
+                            <div><strong>الاسم الإنجليزي:</strong> ${party.nameEn}</div>
+                            <div><strong>رقم الهاتف:</strong> ${party.phoneNumber}</div>
+                            <div><strong>تاريخ الميلاد:</strong> ${formatDate(party.birthDate)}</div>
+                            <div><strong>العنوان:</strong> ${party.address}</div>
+                        </div>
+                    </div>
+                    
+                    <div style="background: white; padding: 15px; border-radius: 8px; border: 1px solid #e0e0e0;">
+                        <h4 style="color: #333; margin-bottom: 10px;">
+                            <i class="fas fa-clock"></i> آخر تعديل
+                        </h4>
+                        <p style="margin: 0; color: #424242;">
+                            ${party.lastModifiedAt ? 
+                                `تم آخر تعديل في: <strong>${formatDateWithTime(party.lastModifiedAt)}</strong>` : 
+                                '<em>لم يتم تعديل هذا العميل من قبل</em>'
+                            }
+                        </p>
+                    </div>
+                `;
+                
+                // ملء المحتوى وإظهار النموذج
+                document.getElementById('modificationHistoryContent').innerHTML = historyContent;
+                document.getElementById('modificationHistoryModal').style.display = 'block';
+                
+            } catch (error) {
+                alert(`خطأ: ${error.message}`);
+                console.error('Error loading modification history:', error);
+            }
+        }
+
+        // إغلاق نموذج تاريخ التعديلات
+        function closeModificationHistoryModal() {
+            document.getElementById('modificationHistoryModal').style.display = 'none';
+        }
+
+        // إغلاق النماذج عند النقر خارجهما
+        window.onclick = function(event) {
+            const editModal = document.getElementById('editModal');
+            const historyModal = document.getElementById('modificationHistoryModal');
+            
+            if (event.target === editModal) {
+                closeEditModal();
+            }
+            if (event.target === historyModal) {
+                closeModificationHistoryModal();
+            }
+        }
+    </script>
+
+</head>
+<body>
+    <div class="container">
+        <header class="header">
+            <div style="display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap;">
+                <div class="logo">
+                    <i class="fas fa-address-book"></i>
+                    <h1>خدمة الزبائن</h1>
+                </div>
+                <a href="index.html" style="color: #ffffff; text-decoration: none; font-size: 16px; display: flex; align-items: center; gap: 6px; transition: opacity 0.3s;">
+                    <i class="fas fa-home"></i>
+                    <span>العودة للصفحة الرئيسية</span>
+                </a>
+            </div>
+            <p class="subtitle">إدارة المرسلين والمستفيدين - إضافة وبحث </p>
+        </header>
+
+        <main class="main-content">
+            <div class="card">
+                <h2><i class="fas fa-search"></i> البحث عن عميل</h2>
+                <div class="search-container">
+                    <input id="unifiedSearch" type="text" placeholder="البحث بالرقم الوطني أو الاسم..." oninput="unifiedSearch()">
+                    <i class="fas fa-search search-icon"></i>
+                </div>
+                <div class="card" id="unifiedResultsContainer">
+                <h2><i class="fas fa-search"></i> نتائج البحث عن عميل</h2>
+                <table class="table unified-results">
+                    <thead>
+                        <tr>
+                            <th>#</th><th>الرقم الوطني</th><th>الاسم العربي</th><th>English</th><th>الهاتف</th><th>الميلاد</th><th>العنوان</th><th>تاريخ آخر تعديل</th><th>الإجراءات</th>
+                        </tr>
+                    </thead>
+                    <tbody id="unifiedResults"></tbody>
+                </table>
+            </div>
+
+            <div class="card">
+                <h2><i class="fas fa-user-plus"></i> إضافة عميل جديد</h2>
+                <div class="grid-2">
+                    <div class="form-group"><label>الرقم الوطني</label><input id="newPartyNationalId" type="text"></div>
+                    <div class="form-group"><label>الاسم بالعربية</label><input id="newPartyNameAr" type="text"></div>
+                    <div class="form-group"><label>الاسم بالإنجليزية</label><input id="newPartyNameEn" type="text"></div>
+                    <div class="form-group"><label>رقم الهاتف</label><input id="newPartyPhone" type="tel"></div>
+                    <div class="form-group"><label>تاريخ الميلاد</label><input id="newPartyBirthDate" type="date"></div>
+                    <div class="form-group"><label>العنوان</label><input id="newPartyAddress" type="text"></div>
+                </div>
+                <div style="margin-top: 15px; text-align: center;">
+                    <button class="btn btn-primary" onclick="addNewParty(1)"><i class="fas fa-user-plus"></i> إضافة</button>
+                </div>
+            </div>
+
+            <!-- نموذج تعديل العميل المنبثق -->
+            <div id="editPartyModal" class="modal" style="display: none;">
+                <div class="modal-content">
+                    <div class="modal-header">
+                        <div style="display: flex; align-items: center; gap: 10px;">
+                            <img src="images/alawneh.png" alt="Alawneh Logo" style="width: 40px; height: auto; filter: brightness(0) invert(1);">
+                            <h2 style="color: white; margin: 0;">تعديل بيانات العميل</h2>
+                        </div>
+                        <span class="close" onclick="closeEditModal()">&times;</span>
+                    </div>
+                    <div class="modal-body">
+                        <div class="grid-2">
+                            <div class="form-group">
+                                <label>الرقم الوطني</label>
+                                <input id="editPartyNationalId" type="text">
+                            </div>
+                            <div class="form-group">
+                                <label>الاسم بالعربية</label>
+                                <input id="editPartyNameAr" type="text">
+                            </div>
+                            <div class="form-group">
+                                <label>الاسم بالإنجليزية</label>
+                                <input id="editPartyNameEn" type="text">
+                            </div>
+                            <div class="form-group">
+                                <label>رقم الهاتف</label>
+                                <input id="editPartyPhone" type="tel">
+                            </div>
+                            <div class="form-group">
+                                <label>تاريخ الميلاد</label>
+                                <input id="editPartyBirthDate" type="date">
+                            </div>
+                            <div class="form-group">
+                                <label>العنوان</label>
+                                <input id="editPartyAddress" type="text">
+                            </div>
+                        </div>
+                    </div>
+                    <div class="modal-footer">
+                        <button class="btn btn-secondary" onclick="closeEditModal()">إلغاء</button>
+                        <button class="btn btn-primary" onclick="savePartyChanges()">حفظ التغييرات</button>
+                    </div>
+                </div>
+            </div>
+
+            <!-- نموذج تاريخ التعديلات المنبثق -->
+            <div id="modificationHistoryModal" class="modal" style="display: none;">
+                <div class="modal-content">
+                    <div class="modal-header">
+                        <div style="display: flex; align-items: center; gap: 10px;">
+                            <img src="images/alawneh.png" alt="Alawneh Logo" style="width: 40px; height: auto; filter: brightness(0) invert(1);">
+                            <h2 style="color: white; margin: 0;">تاريخ التعديلات</h2>
+                        </div>
+                        <span class="close" onclick="closeModificationHistoryModal()">&times;</span>
+                    </div>
+                    <div class="modal-body">
+                        <div id="modificationHistoryContent">
+                            <!-- سيتم ملء المحتوى هنا -->
+                        </div>
+                    </div>
+                    <div class="modal-footer">
+                        <button class="btn btn-secondary" onclick="closeModificationHistoryModal()">إغلاق</button>
+                    </div>
+                </div>
+            </div>
+
+            <div class="card" id="remittancesContainer">
+                <h2><i class="fas fa-money-bill-transfer"></i> حوالات العميل المحدد</h2>
+                <table class="table rem-table">
+                    <thead>
+                        <tr>
+                            <th>المرجع</th><th>الحالة</th><th>الدور</th><th>المرسل</th><th>المستفيد</th><th>الدولة</th><th>المبلغ</th><th>العمولة</th><th>تاريخ الإرسال</th><th>تاريخ السحب</th>
+                        </tr>
+                    </thead>
+                    <tbody id="remittancesBody"></tbody>
+                </table>
+            </div>
+        </main>
+
+        <footer class="footer">
+            <p> نظام Alawneh-Eway. جميع الحقوق محفوظة. &copy; 2025</p>
+        </footer>
+    </div>
+</body>
+</html>
+
+

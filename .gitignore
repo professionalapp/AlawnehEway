@@ -1,0 +1,35 @@
+# Build results
+bin/
+obj/
+publish/
+
+# User-specific files
+*.user
+*.suo
+*.cache
+
+# IDE files
+.vs/
+.vscode/
+
+# OS files
+.DS_Store
+Thumbs.db
+
+# Logs
+*.log
+
+# Database
+*.db
+*.sqlite
+
+# Environment variables
+.env
+.env.local
+
+# PowerShell scripts (optional - remove if you want to keep them)
+*.ps1
+
+# Deployment guides (optional - remove if you want to keep them)
+DEPLOYMENT_GUIDE.md
+README-DEPLOY.md

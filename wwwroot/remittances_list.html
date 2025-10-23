@@ -1,0 +1,1019 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>قائمة الحوالات - Alawneh-Eway</title>
+    <link rel="stylesheet" href="css/style.css">
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
+    <script src="js/countries.js"></script>
+    <style>
+        .search-panel { text-align: center; margin-bottom: 20px; }
+        .search-input { width: 100%; max-width: 720px; font-size: 18px; padding: 12px; border-radius: 8px; border: 1px solid #ced4da; }
+        .date-filter-panel { display: flex; justify-content: center; align-items: center; gap: 15px; margin-top: 15px; flex-wrap: wrap; }
+        .date-filter-group { display: flex; align-items: center; gap: 8px; }
+        .date-filter-label { font-weight: bold; color: #6c757d; font-size: 14px; }
+        .date-filter-input { padding: 8px 12px; border-radius: 6px; border: 1px solid #ced4da; font-size: 14px; }
+        .table {
+            width: 100%;
+            border-collapse: collapse;
+            margin-top: 15px;
+        }
+        .table th, .table td {
+            border: 1px solid #dee2e6;
+            padding: 10px;
+            text-align: right;
+            color: #6c757d;
+        }
+        .table thead th {
+            background-color: transparent;
+            color: #6c757d;
+            font-weight: bold;
+        }
+        .table tbody tr:nth-of-type(odd) {
+            background-color: transparent;
+        }
+        .pill { padding: 4px 8px; display: inline-block; color: #6c757d; font-weight: bold; }
+        .empty { text-align: center; padding: 30px; color: #6c757d; }
+        .amount { color: #6c757d; }
+        .fee { color: #6c757d; }
+        .date { color: #6c757d; font-size: 14px; }
+        .total-sum { background: transparent; padding: 15px; margin-top: 15px; text-align: center; }
+        .total-sum h3 { color: #6c757d; margin: 0; }
+        .total-sum .sum { font-size: 24px; font-weight: bold; color: #6c757d; }
+        .details-card { background: transparent; color: #6c757d; padding: 20px; margin-top: 16px; }
+        .details-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+        .details-card strong { color: #6c757d; }
+        .badge-status { padding: 4px 10px; font-weight: bold; color: #6c757d; display: inline-block; }
+        .badge-pending { color: #6c757d; }
+        .badge-paid { color: #6c757d; }
+        .badge-pending-approval { color: #6c757d; }
+        
+        /* أزرار صغيرة */
+        .btn-sm {
+            padding: 5px 10px;
+            font-size: 0.875rem;
+            margin: 2px;
+        }
+        
+        /* تحسين عرض الجدول مع الأزرار */
+        .table td:last-child {
+            white-space: nowrap;
+            text-align: center;
+        }
+        
+        .table .btn {
+            min-width: 35px;
+            height: 30px;
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+        }
+        
+        /* إخفاء أعمدة معينة */
+        .hidden-column {
+            display: none;
+        }
+        
+        /* تصميم صفحة التفاصيل الكاملة */
+        .full-details-modal {
+            display: none;
+            position: fixed;
+            z-index: 9999;
+            left: 0;
+            top: 0;
+            width: 100%;
+            height: 100%;
+            background-color: rgba(0, 0, 0, 0.6);
+            overflow-y: auto;
+        }
+        
+        .full-details-content {
+            background-color: #ffffff;
+            margin: 3% auto;
+            padding: 0;
+            width: 90%;
+            max-width: 900px;
+            border-radius: 12px;
+            box-shadow: 0 10px 40px rgba(0, 0, 0, 0.3);
+            animation: slideDown 0.3s ease-out;
+        }
+        
+        @keyframes slideDown {
+            from {
+                opacity: 0;
+                transform: translateY(-50px);
+            }
+            to {
+                opacity: 1;
+                transform: translateY(0);
+            }
+        }
+        
+        .full-details-header {
+            background: linear-gradient(135deg, #007bff 0%, #0056b3 100%);
+            color: white;
+            padding: 25px 30px;
+            border-radius: 12px 12px 0 0;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+        
+        .full-details-header h2 {
+            margin: 0;
+            font-size: 24px;
+            display: flex;
+            align-items: center;
+            gap: 12px;
+        }
+        
+        .full-details-close {
+            color: white;
+            font-size: 32px;
+            font-weight: bold;
+            cursor: pointer;
+            transition: all 0.3s;
+            border: none;
+            background: transparent;
+            width: 40px;
+            height: 40px;
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+        
+        .full-details-close:hover {
+            background: rgba(255, 255, 255, 0.2);
+            transform: rotate(90deg);
+        }
+        
+        .full-details-body {
+            padding: 30px;
+        }
+        
+        .detail-section {
+            margin-bottom: 25px;
+            background: #f8f9fa;
+            padding: 20px;
+            border-radius: 8px;
+            border-left: 4px solid #007bff;
+        }
+        
+        .detail-section h3 {
+            color: #007bff;
+            margin: 0 0 15px 0;
+            font-size: 18px;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+        
+        .detail-row {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 15px;
+            margin-bottom: 12px;
+        }
+        
+        .detail-item {
+            display: flex;
+            flex-direction: column;
+            gap: 5px;
+        }
+        
+        .detail-label {
+            color: #6c757d;
+            font-size: 13px;
+            font-weight: 600;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+        }
+        
+        .detail-value {
+            color: #495057;
+            font-size: 16px;
+            font-weight: 500;
+        }
+        
+        .detail-value.large {
+            font-size: 20px;
+            color: #6c757d;
+            font-weight: 700;
+        }
+        
+        .detail-value.highlight {
+            background: transparent;
+            padding: 0;
+            border-radius: 0;
+            display: inline-block;
+            color: #6c757d;
+        }
+        
+        @media (max-width: 768px) {
+            .detail-row {
+                grid-template-columns: 1fr;
+            }
+            
+            .full-details-content {
+                width: 95%;
+                margin: 5% auto;
+            }
+        }
+    </style>
+    <script>
+        const API_BASE_URL = 'http://localhost:5216';
+        let timer = null;
+        let currentList = [];
+
+        // دوال الفاليديشن
+        function validateSearchQuery(query) {
+            if (!query || query.trim() === '') {
+                return null; // السماح بالبحث بدون نص إذا كان هناك فلتر تاريخ
+            }
+            if (query.trim().length < 2) {
+                return 'يرجى إدخال على الأقل حرفين للبحث';
+            }
+            return null;
+        }
+
+        async function searchRemittances() {
+            const q = document.getElementById('query').value.trim();
+            const fromDate = document.getElementById('fromDate')?.value || '';
+            const toDate = document.getElementById('toDate')?.value || '';
+            
+            // التحقق من وجود معيار بحث واحد على الأقل
+            if (!q && !fromDate && !toDate) {
+                document.getElementById('results').innerHTML = `<tr><td colspan="7" class="empty">يرجى إدخال نص للبحث أو تحديد فترة زمنية</td></tr>`;
+                document.getElementById('totalSum').textContent = '0.00';
+                const dc = document.getElementById('detailsCard'); if (dc) dc.style.display = 'none';
+                return;
+            }
+            
+            // فاليديشن نص البحث
+            if (q) {
+                const queryError = validateSearchQuery(q);
+                if (queryError) {
+                    document.getElementById('results').innerHTML = `<tr><td colspan="7" class="empty">${queryError}</td></tr>`;
+                    document.getElementById('totalSum').textContent = '0.00';
+                    const dc = document.getElementById('detailsCard'); if (dc) dc.style.display = 'none';
+                    return;
+                }
+            }
+            
+            let list = [];
+            try {
+                // بناء URL مع المعاملات
+                let url = `${API_BASE_URL}/remittances/search?`;
+                const params = [];
+                if (q) params.push(`q=${encodeURIComponent(q)}`);
+                if (fromDate) params.push(`fromDate=${encodeURIComponent(fromDate)}`);
+                if (toDate) params.push(`toDate=${encodeURIComponent(toDate)}`);
+                url += params.join('&');
+                
+                const res = await fetch(url);
+                if (!res.ok) {
+                    console.error('خطأ في البحث:', res.status);
+                    document.getElementById('results').innerHTML = `<tr><td colspan="7" class="empty">خطأ في البحث</td></tr>`;
+                    return;
+                }
+                list = await res.json();
+                currentList = list;
+                const tbody = document.getElementById('results');
+                if (!list.length) {
+                    tbody.innerHTML = `<tr><td colspan="7" class="empty">لا توجد نتائج مطابقة</td></tr>`;
+                    document.getElementById('totalSum').textContent = '0.00';
+                    const dc = document.getElementById('detailsCard'); if (dc) dc.style.display = 'none';
+                    return;
+                }
+            } catch (error) {
+                console.error('خطأ في البحث:', error);
+                document.getElementById('results').innerHTML = `<tr><td colspan="7" class="empty">خطأ في الاتصال بالخادم</td></tr>`;
+                return;
+            }
+
+            // حساب المجموع الكلي
+            const totalAmount = list.reduce((sum, r) => sum + r.amount, 0);
+            document.getElementById('totalSum').textContent = totalAmount.toFixed(2);
+
+            const tbody = document.getElementById('results');
+            tbody.innerHTML = list.map(r => `
+                <tr>
+                    <td><span class="pill">${r.reference}</span></td>
+                    <td><strong>${r.sender?.nameAr ?? 'غير محدد'}</strong></td>
+                    <td class="muted">${r.sender?.nameEn ?? 'N/A'}</td>
+                    <td><strong>${r.beneficiary?.nameAr ?? 'غير محدد'}</strong></td>
+                    <td class="muted">${r.beneficiary?.nameEn ?? 'N/A'}</td>
+                    <td class="hidden-column">${getCountryLabel(r.country || r.Country) || (r.country || r.Country || '')}</td>
+                    <td class="hidden-column"><strong class="amount">${r.amount.toFixed(2)} د.أ</strong></td>
+                    <td class="hidden-column"><span class="fee">${r.fee.toFixed(2)} د.أ</span></td>
+                    <td class="hidden-column"><span style="color: #6c757d;">${r.senderCashier?.name || 'غير محدد'}</span></td>
+                    <td class="hidden-column"><span style="color: #6c757d;">${r.receiverCashier?.name || 'غير محدد'}</span></td>
+                    <td class="hidden-column">${formatDate(r.createdAt)}</td>
+                    <td class="hidden-column">${r.paidAt ? formatDate(r.paidAt) : '-'}</td>
+                    <td><span class="badge-status ${r.status === 'Payment pending' ? 'badge-pending' : r.status === 'Paid' ? 'badge-paid' : 'badge-pending-approval'}">${mapStatusToArabic(r.status)}</span></td>
+                    <td>
+                        <button class="btn btn-sm" style="background: #17a2b8; color: white;" onclick="showFullDetails('${r.reference}')" title="عرض التفاصيل الكاملة">
+                            <i class="fas fa-list-alt"></i>
+                        </button>
+                        <button class="btn btn-sm btn-primary" onclick="editRemittance(${r.id})" title="تعديل">
+                            <i class="fas fa-edit"></i>
+                        </button>
+                        ${r.status === 'Payment pending' ? `<button class="btn btn-sm btn-success" onclick="withdrawRemittance('${r.reference}')" title="سحب"><i class="fas fa-money-bill"></i></button>` : ''}
+                        ${r.status === 'Paid' ? `<button class="btn btn-sm btn-warning" onclick="returnToPending('${r.reference}')" title="إرجاع للحالة السابقة"><i class="fas fa-undo"></i></button>` : ''}
+                        <button class="btn btn-sm btn-danger" onclick="deleteRemittance(${r.id}, '${r.reference}')" title="حذف">
+                            <i class="fas fa-trash"></i>
+                        </button>
+                    </td>
+                </tr>
+            `).join('');
+
+            if (list.length === 1) {
+                showDetails(list[0].reference);
+            } else {
+                const dc = document.getElementById('detailsCard'); if (dc) dc.style.display = 'none';
+            }
+        }
+
+        function showDetails(reference) {
+            const r = currentList.find(x => x.reference === reference);
+            if (!r) return;
+            renderDetails(r);
+        }
+
+        function renderDetails(r) {
+            const box = document.getElementById('detailsCard');
+            if (!box) return;
+            const statusBadgeClass = r.status === 'Payment pending' ? 'badge-pending' : r.status === 'Paid' ? 'badge-paid' : 'badge-pending-approval';
+            const typeForPrint = r.status === 'Paid' ? 'withdraw' : 'send';
+            box.innerHTML = `
+                <div style="margin-bottom:12px;">
+                    <h3 style="margin:0; color:#007bff; display:flex; align-items:center; gap:8px;"><i class=\"fas fa-receipt\"></i> تفاصيل الحوالة</h3>
+                </div>
+                <div style="margin-bottom:10px;">
+                    <strong>الرقم المرجعي:</strong> <span style="color:#007bff; font-weight:bold;">${r.reference}</span>
+                </div>
+                <div class="details-grid">
+                    <div><strong>الحالة:</strong> <span class="badge-status ${statusBadgeClass}">${mapStatusToArabic(r.status)}</span></div>
+                    <div><strong>الدولة:</strong> ${getCountryLabel(r.country) || r.country}</div>
+                    <div><strong>المرسل:</strong> ${r.sender?.nameAr ?? ''} (${r.sender?.nameEn ?? ''})</div>
+                    <div><strong>المستفيد:</strong> ${r.beneficiary?.nameAr ?? ''} (${r.beneficiary?.nameEn ?? ''})</div>
+                    <div><strong>المبلغ:</strong> <b>${r.amount.toFixed(2)}</b> د.أ</div>
+                    <div><strong>العمولة:</strong> ${r.fee.toFixed(2)} د.أ</div>
+                    <div><strong>تاريخ الإرسال:</strong> ${formatDate(r.createdAt)}</div>
+                    ${r.paidAt ? `<div><strong>تاريخ السحب:</strong> ${formatDate(r.paidAt)}</div>` : ''}
+                    ${r.releasedNote ? `<div style="grid-column: 1 / -1; background:#fff; border:2px solid #28a745; border-radius:8px; padding:10px; margin-top:6px;">
+                        <div style="color:#212529; font-weight:700; margin-bottom:6px;"><i class=\"fas fa-unlock\" style=\"color:#28a745; margin-left:6px;\"></i> معلومات فك الإيقاف</div>
+                        <div style="display:grid; grid-template-columns:1fr 1fr; gap:10px;">
+                            <div><strong>فُك بواسطة:</strong> ${(r.releasedNote || '').replace(/^\[Release\]\s*/, '')}</div>
+                            <div><strong>تاريخ الفك:</strong> ${r.releasedAt ? formatDate(r.releasedAt) : '-'}</div>
+                        </div>
+                    </div>` : ''}
+                </div>
+                ${r.status === 'Pending Approval' ? '<div style="margin-top:10px; color:#dc3545;"><i class="fas fa-exclamation-triangle"></i> <strong>تنبيه:</strong> هذه الحوالة قيد الموافقة ولا يمكن سحبها حالياً</div>' : ''}
+                <div style="display:flex; gap:8px; margin-top:14px;">
+                    <button class="btn btn-secondary" onclick="printReceipt(currentList.find(x=>x.reference==='${r.reference}'), '${typeForPrint}')"><i class="fas fa-print"></i> طباعة</button>
+                    ${r.status === 'Payment pending' ? `<button class=\"btn btn-success\" onclick=\"withdrawRemittance('${r.reference}')\"><i class=\"fas fa-money-bill\"></i> سحب</button>` : ''}
+                </div>
+            `;
+            box.style.display = 'block';
+        }
+
+        async function printReceipt(remittance, type) {
+            const logoSrc = 'images/alawneh.png';
+            const receiptDate = new Date().toLocaleDateString('ar-SA', { 
+                year: 'numeric', 
+                month: 'long', 
+                day: 'numeric', 
+                hour: '2-digit', 
+                minute: '2-digit',
+                calendar: 'gregory'
+            });
+            const voucherType = type === 'send' ? 'مستند قبض' : 'مستند صرف';
+
+            // حساب المجموع
+            const total = (remittance.amount + remittance.fee).toFixed(2);
+            
+            // الحصول على أسماء المرسل والمستفيد
+            const senderName = remittance.sender ? `${remittance.sender.nameAr} (${remittance.sender.nameEn})` : 'غير محدد';
+            const beneficiaryName = remittance.beneficiary ? `${remittance.beneficiary.nameAr} (${remittance.beneficiary.nameEn})` : 'غير محدد';
+
+            // جلب سعر الصرف
+            let exchangeRate = null;
+            let currency = '';
+            let convertedAmount = '';
+            try {
+                const rateRes = await fetch(`${API_BASE_URL}/exchange-rates/${encodeURIComponent(remittance.country)}`);
+                if (rateRes.ok) {
+                    const rateJson = await rateRes.json();
+                    const rate = Number(rateJson.rate || 0);
+                    currency = rateJson.currency || '';
+                    if (rate > 0) {
+                        exchangeRate = rate;
+                        convertedAmount = (remittance.amount / rate).toFixed(2);
+                    }
+                }
+            } catch (e) {
+                console.error('Error fetching exchange rate for receipt:', e);
+            }
+
+            const receiptContent = `
+                <div style="font-family: 'Arial', sans-serif; direction: rtl; text-align: right; padding: 15px; border: 2px solid #007bff; width: 90mm; margin: 0 auto; background: #ffffff;">
+                    <div style="text-align: center; margin-bottom: 12px;">
+                        <img src="${logoSrc}" alt="Alawneh Logo" style="width: 120px; height: auto; display: block; margin: 0 auto;">
+                        <h2 style="color: #007bff; margin-top: 8px; font-size: 18px; font-weight: bold;">شركة العلاونة للصرافة</h2>
+                        <p style="font-size: 14px; color: #007bff; font-weight: bold; margin: 5px 0;">${voucherType}</p>
+                    </div>
+                    
+                    <div style="background: #ffffff; padding: 8px; border-radius: 6px; margin-bottom: 10px; border: 1px solid #dee2e6;">
+                        <div style="margin-bottom: 6px; font-size: 12px;">
+                            <strong style="color: #6c757d; font-size: 13px;">التاريخ:</strong> 
+                            <span style="font-size: 13px; color: #6c757d; font-weight: bold;">${receiptDate}</span>
+                        </div>
+                        <div style="margin-bottom: 6px; font-size: 12px;">
+                            <strong style="color: #6c757d; font-size: 13px;">رقم الحوالة:</strong> 
+                            <span style="font-size: 13px; color: #6c757d; font-weight: bold;">#${remittance.id}</span>
+                        </div>
+                        <div style="margin-bottom: 6px; font-size: 12px;">
+                            <strong style="color: #6c757d; font-size: 13px;">الرقم المرجعي:</strong> 
+                            <span style="font-size: 13px; color: #6c757d; font-weight: bold;">${remittance.reference}</span>
+                        </div>
+                        <div style="font-size: 12px;">
+                            <strong style="color: #6c757d; font-size: 13px;">الحالة:</strong> 
+                            <span style="font-size: 13px; color: #6c757d; font-weight: bold;">${mapStatusToArabic(remittance.status)}</span>
+                        </div>
+                    </div>
+                    
+                    <hr style="border: none; border-top: 2px solid #007bff; margin: 10px 0;">
+                    
+                    <div style="background: #ffffff; padding: 8px; border-radius: 6px; margin-bottom: 10px; border: 1px solid #dee2e6;">
+                        <div style="margin-bottom: 6px; font-size: 12px;">
+                            <strong style="color: #6c757d; font-size: 13px;">المرسل:</strong> 
+                            <div style="font-size: 13px; color: #6c757d; font-weight: bold; margin-top: 3px;">
+                                ${senderName}
+                            </div>
+                        </div>
+                        <div style="margin-bottom: 6px; font-size: 12px;">
+                            <strong style="color: #6c757d; font-size: 13px;">المستفيد:</strong> 
+                            <div style="font-size: 13px; color: #6c757d; font-weight: bold; margin-top: 3px;">
+                                ${beneficiaryName}
+                            </div>
+                        </div>
+                        <div style="margin-bottom: 6px; font-size: 12px;">
+                            <strong style="color: #6c757d; font-size: 13px;">الدولة:</strong> 
+                            <span style="font-size: 13px; color: #6c757d; font-weight: bold;">${getCountryLabel(remittance.country) || remittance.country}</span>
+                        </div>
+                        <div style="margin-bottom: 6px; font-size: 12px;">
+                            <strong style="color: #6c757d; font-size: 13px;">تاريخ الإرسال:</strong> 
+                            <span style="font-size: 13px; color: #6c757d; font-weight: bold;">${formatDate(remittance.createdAt)}</span>
+                        </div>
+                        ${remittance.paidAt ? `<div style="font-size: 12px;">
+                            <strong style="color: #6c757d; font-size: 13px;">تاريخ السحب:</strong> 
+                            <span style="font-size: 13px; color: #6c757d; font-weight: bold;">${formatDate(remittance.paidAt)}</span>
+                        </div>` : ''}
+                    </div>
+                    
+                    <hr style="border: none; border-top: 2px solid #007bff; margin: 10px 0;">
+                    
+                    <div style="background: #ffffff; padding: 8px; border-radius: 6px; margin-bottom: 10px; border: 1px solid #dee2e6;">
+                        <div style="margin-bottom: 6px; font-size: 12px;">
+                            <strong style="color: #6c757d; font-size: 13px;">المبلغ:</strong> 
+                            <span style="font-size: 14px; color: #6c757d; font-weight: bold;">${remittance.amount.toFixed(2)} د.أ</span>
+                        </div>
+                        <div style="margin-bottom: 6px; font-size: 12px;">
+                            <strong style="color: #6c757d; font-size: 13px;">العمولة:</strong> 
+                            <span style="font-size: 14px; color: #6c757d; font-weight: bold;">${remittance.fee.toFixed(2)} د.أ</span>
+                        </div>
+                        <div style="font-size: 14px; background: #6c757d; color: white; padding: 8px; border-radius: 6px; text-align: center;">
+                            <strong style="font-size: 16px;">الإجمالي: ${total} د.أ</strong>
+                        </div>
+                    </div>
+                    
+                    ${exchangeRate ? `<hr style="border: none; border-top: 2px solid #007bff; margin: 10px 0;">
+                    
+                    <div style="background: #ffffff; padding: 8px; border-radius: 6px; margin-bottom: 10px; border: 1px solid #dee2e6;">
+                        <div style="margin-bottom: 6px; font-size: 12px;">
+                            <strong style="color: #6c757d; font-size: 13px;">سعر الصرف:</strong> 
+                            <span style="font-size: 13px; color: #6c757d; font-weight: bold;">${exchangeRate.toFixed(4)}</span>
+                        </div>
+                        <div style="font-size: 13px; background: #6c757d; color: white; padding: 8px; border-radius: 6px; text-align: center;">
+                            <strong style="font-size: 14px;">مبلغ الحوالة بالعملة: ${convertedAmount} ${currency}</strong>
+                        </div>
+                    </div>` : ''}
+                    
+                    <div style="text-align: center; margin-top: 12px; font-size: 12px; color: #6c757d; font-weight: bold; background: #ffffff; padding: 8px; border-radius: 6px; border: 1px solid #dee2e6;">
+                        شكراً لاختياركم شركة العلاونة للصرافة
+                    </div>
+                </div>
+            `;
+
+            const printWindow = window.open('', '_blank');
+            printWindow.document.write(receiptContent);
+            printWindow.document.close();
+            printWindow.print();
+        }
+
+        function onChange(callback) { clearTimeout(timer); timer = setTimeout(callback, 400); }
+
+        function formatDate(dateString) {
+            if (!dateString) return '';
+            const date = new Date(dateString);
+            if (isNaN(date.getTime())) return dateString;
+            
+            // إضافة 3 ساعات لتصحيح المنطقة الزمنية (UTC+3)
+            date.setHours(date.getHours() + 3);
+            
+            const year = date.getFullYear();
+            const month = (date.getMonth() + 1).toString().padStart(2, '0');
+            const day = date.getDate().toString().padStart(2, '0');
+            
+            let hours = date.getHours();
+            const minutes = date.getMinutes().toString().padStart(2, '0');
+            const ampm = hours >= 12 ? 'PM' : 'AM';
+            
+            hours = hours % 12;
+            hours = hours ? hours : 12;
+            const strHours = hours.toString().padStart(2, '0');
+            
+            return `${month}/${day}/${year} ${strHours}:${minutes} ${ampm}`;
+        }
+        
+        function mapStatusToArabic(status) {
+            switch (status) {
+                case 'Payment pending': return 'بانتظار الدفع';
+                case 'Paid': return 'مدفوعة';
+                case 'Pending Approval': return 'قيد الموافقة';
+                default: return status;
+            }
+        }
+        
+        // عرض التفاصيل الكاملة في صفحة منبثقة
+        async function showFullDetails(reference) {
+            // إظهار حالة تحميل بسيطة
+            const container = document.getElementById('fullDetailsModal');
+            container.innerHTML = `
+                <div class="full-details-content">
+                    <div class="full-details-header">
+                        <h2><i class="fas fa-file-invoice"></i> تفاصيل الحوالة الكاملة</h2>
+                        <button class="full-details-close" onclick="closeFullDetails()">&times;</button>
+                    </div>
+                    <div class="full-details-body" style="text-align:center;color:#6c757d;">
+                        <i class="fas fa-spinner fa-spin"></i> جاري جلب التفاصيل...
+                    </div>
+                </div>`;
+            container.style.display = 'block';
+
+            try {
+                const res = await fetch(`${API_BASE_URL}/remittances/by-ref/${encodeURIComponent(reference)}`);
+                if (!res.ok) {
+                    container.innerHTML = '';
+                    container.style.display = 'none';
+                    alert('تعذر جلب تفاصيل الحوالة');
+                    return;
+                }
+                const remittance = await res.json();
+
+                const statusBadgeClass = remittance.status === 'Payment pending' ? 'badge-pending' :
+                                        remittance.status === 'Paid' ? 'badge-paid' : 'badge-pending-approval';
+
+                const modalContent = `
+                    <div class="full-details-content">
+                        <div class="full-details-header">
+                            <h2>
+                                <i class="fas fa-file-invoice"></i>
+                                تفاصيل الحوالة الكاملة
+                            </h2>
+                            <button class="full-details-close" onclick="closeFullDetails()">&times;</button>
+                        </div>
+                        <div class="full-details-body">
+                            <div class="detail-section">
+                                <h3><i class="fas fa-info-circle"></i> المعلومات الأساسية</h3>
+                                <div class="detail-row">
+                                    <div class="detail-item">
+                                        <span class="detail-label">الرقم المرجعي</span>
+                                        <span class="detail-value large highlight">${remittance.reference}</span>
+                                    </div>
+                                    <div class="detail-item">
+                                        <span class="detail-label">الحالة</span>
+                                        <span class="badge-status ${statusBadgeClass}">${mapStatusToArabic(remittance.status)}</span>
+                                    </div>
+                                </div>
+                                ${remittance.releasedNote ? `
+                                <div class="detail-row" style="margin-top:6px;">
+                                    <div class="detail-item">
+                                        <span class="detail-label">فُك بواسطة</span>
+                                        <span class="detail-value">${(remittance.releasedNote || '').replace(/^\[Release\]\s*/, '')}</span>
+                                    </div>
+                                    <div class="detail-item">
+                                        <span class="detail-label">تاريخ الفك</span>
+                                        <span class="detail-value">${remittance.releasedAt ? formatDate(remittance.releasedAt) : '-'}</span>
+                                    </div>
+                                </div>` : ''}
+                            </div>
+
+                            <div class="detail-section">
+                                <h3><i class="fas fa-user"></i> معلومات المرسل</h3>
+                                <div class="detail-row">
+                                    <div class="detail-item">
+                                        <span class="detail-label">الاسم بالعربي</span>
+                                        <span class="detail-value">${remittance.sender?.nameAr || 'غير محدد'}</span>
+                                    </div>
+                                    <div class="detail-item">
+                                        <span class="detail-label">الاسم بالإنجليزي</span>
+                                        <span class="detail-value">${remittance.sender?.nameEn || 'N/A'}</span>
+                                    </div>
+                                </div>
+                                <div class="detail-row">
+                                    <div class="detail-item">
+                                        <span class="detail-label">الرقم الوطني</span>
+                                        <span class="detail-value">${remittance.sender?.nationalId || 'غير محدد'}</span>
+                                    </div>
+                                    <div class="detail-item">
+                                        <span class="detail-label">رقم الهاتف</span>
+                                        <span class="detail-value">${remittance.sender?.phoneNumber || 'غير محدد'}</span>
+                                    </div>
+                                </div>
+                            </div>
+
+                            <div class="detail-section">
+                                <h3><i class="fas fa-user-check"></i> معلومات المستفيد</h3>
+                                <div class="detail-row">
+                                    <div class="detail-item">
+                                        <span class="detail-label">الاسم بالعربي</span>
+                                        <span class="detail-value">${remittance.beneficiary?.nameAr || 'غير محدد'}</span>
+                                    </div>
+                                    <div class="detail-item">
+                                        <span class="detail-label">الاسم بالإنجليزي</span>
+                                        <span class="detail-value">${remittance.beneficiary?.nameEn || 'N/A'}</span>
+                                    </div>
+                                </div>
+                                <div class="detail-row">
+                                    <div class="detail-item">
+                                        <span class="detail-label">الرقم الوطني</span>
+                                        <span class="detail-value">${remittance.beneficiary?.nationalId || 'غير محدد'}</span>
+                                    </div>
+                                    <div class="detail-item">
+                                        <span class="detail-label">رقم الهاتف</span>
+                                        <span class="detail-value">${remittance.beneficiary?.phoneNumber || 'غير محدد'}</span>
+                                    </div>
+                                </div>
+                            </div>
+
+                            <div class="detail-section">
+                                <h3><i class="fas fa-dollar-sign"></i> التفاصيل المالية</h3>
+                                <div class="detail-row">
+                                    <div class="detail-item">
+                                        <span class="detail-label">الدولة</span>
+                                        <span class="detail-value">${getCountryLabel(remittance.country) || remittance.country}</span>
+                                    </div>
+                                    <div class="detail-item">
+                                        <span class="detail-label">المبلغ</span>
+                                        <span class="detail-value large">${remittance.amount.toFixed(2)} د.أ</span>
+                                    </div>
+                                </div>
+                                <div class="detail-row">
+                                    <div class="detail-item">
+                                        <span class="detail-label">العمولة</span>
+                                        <span class="detail-value">${remittance.fee.toFixed(2)} د.أ</span>
+                                    </div>
+                                    <div class="detail-item">
+                                        <span class="detail-label">الإجمالي</span>
+                                        <span class="detail-value large">${(remittance.amount + remittance.fee).toFixed(2)} د.أ</span>
+                                    </div>
+                                </div>
+                            </div>
+
+                            <div class="detail-section">
+                                <h3><i class="fas fa-cash-register"></i> معلومات الصناديق</h3>
+                                <div class="detail-row">
+                                    <div class="detail-item">
+                                        <span class="detail-label">الصندوق المرسل</span>
+                                        <span class="detail-value">${remittance.senderCashier?.name || 'غير محدد'}</span>
+                                    </div>
+                                    <div class="detail-item">
+                                        <span class="detail-label">الصندوق المستقبل</span>
+                                        <span class="detail-value">${remittance.receiverCashier?.name || 'غير محدد'}</span>
+                                    </div>
+                                </div>
+                            </div>
+
+                            <div class="detail-section">
+                                <h3><i class="fas fa-calendar-alt"></i> التواريخ</h3>
+                                <div class="detail-row">
+                                    <div class="detail-item">
+                                        <span class="detail-label">تاريخ الإرسال</span>
+                                        <span class="detail-value">${formatDate(remittance.createdAt)}</span>
+                                    </div>
+                                    <div class="detail-item">
+                                        <span class="detail-label">تاريخ السحب</span>
+                                        <span class="detail-value">${remittance.paidAt ? formatDate(remittance.paidAt) : 'لم يتم السحب بعد'}</span>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                `;
+
+                container.innerHTML = modalContent;
+            } catch (e) {
+                container.innerHTML = '';
+                container.style.display = 'none';
+                alert('حدث خطأ أثناء جلب التفاصيل');
+            }
+        }
+        
+        function closeFullDetails() {
+            document.getElementById('fullDetailsModal').style.display = 'none';
+        }
+        
+        // إغلاق الـ modal عند النقر خارجه
+        window.onclick = function(event) {
+            const modal = document.getElementById('fullDetailsModal');
+            if (event.target === modal) {
+                closeFullDetails();
+            }
+        }
+
+        async function withdrawRemittance(reference) {
+            // فاليديشن الرقم المرجعي
+            const refError = validateReferenceNumber(reference);
+            if (refError) {
+                alert(refError);
+                return;
+            }
+
+            const res = await fetch(`${API_BASE_URL}/remittances/by-ref/${encodeURIComponent(reference)}`);
+            if (!res.ok) { alert('لم يتم العثور على حوالة بهذا الرقم المرجعي'); return; }
+            const remittance = await res.json();
+
+            if (remittance.status === 'Paid') { alert('هذه الحوالة مدفوعة بالفعل'); return; }
+            
+            // التحقق من حالة قيد الموافقة
+            if (remittance.status === 'Pending Approval') {
+                alert('⚠️ لا يمكن سحب هذه الحوالة!\n\nهذه الحوالة يوجد عليها مصادقة (قيد الموافقة).\n\nيرجى انتظار اعتماد أو رفض الطلب من قبل الإدارة.');
+                return;
+            }
+
+            if (!confirm('هل أنت متأكد من سحب هذه الحوالة؟')) {
+                return;
+            }
+
+            if (remittance.amount > 2000) {
+                alert('يرجى عدم سحب هذه الحوالة إلا برقابة ثنائية');
+                return;
+            }
+
+            const markPaidRes = await fetch(`${API_BASE_URL}/remittances/mark-paid?reference=${encodeURIComponent(reference)}`, { method: 'POST' });
+            if (!markPaidRes.ok) { alert('فشل التحديث'); return; }
+            
+            const updatedRemittance = await markPaidRes.json();
+            alert('✅ تم السحب بنجاح!\n\n' +
+                  '📋 تفاصيل العملية:\n' +
+                  `• الرقم المرجعي: ${reference}\n` +
+                  `• المبلغ: ${updatedRemittance.amount.toFixed(2)} د.أ\n` +
+                  `• الحالة الجديدة: مدفوعة\n` +
+                  `• تاريخ السحب: ${new Date().toLocaleString('ar-SA')}\n\n` +
+                  'سيتم طباعة الإيصال الآن.');
+            printReceipt(updatedRemittance, 'withdraw');
+            searchRemittances(); // Refresh the list
+        }
+
+        // دالة فاليديشن الرقم المرجعي
+        function validateReferenceNumber(reference) {
+            if (!reference || reference.trim() === '') {
+                return 'الرقم المرجعي مطلوب';
+            }
+            if (!/^\d{13}$/.test(reference.trim())) {
+                return 'الرقم المرجعي يجب أن يكون 13 رقم';
+            }
+            return null;
+        }
+
+        // متغير لحفظ معرف الحوالة المراد تعديلها
+        let editingRemittanceId = null;
+
+        // فتح نموذج تعديل الحوالة
+        async function editRemittance(remittanceId) {
+            try {
+                // جلب بيانات الحوالة
+                const response = await fetch(`${API_BASE_URL}/remittances`);
+                if (!response.ok) {
+                    throw new Error('فشل في جلب بيانات الحوالات');
+                }
+                
+                const remittances = await response.json();
+                const remittance = remittances.find(r => r.id === remittanceId);
+                
+                if (!remittance) {
+                    throw new Error('الحوالة غير موجودة');
+                }
+                
+                editingRemittanceId = remittanceId;
+                
+                // إنشاء نموذج تعديل بسيط
+                const newAmount = prompt(`تعديل المبلغ (الحالي: ${remittance.amount} د.أ):`, remittance.amount);
+                if (newAmount === null) return; // المستخدم ألغى
+                
+                const newCountry = prompt(`تعديل الدولة (الحالية: ${remittance.country}):`, remittance.country);
+                if (newCountry === null) return;
+                
+                const newReason = prompt(`تعديل السبب (الحالي: ${remittance.reason}):`, remittance.reason);
+                if (newReason === null) return;
+                
+                const newPurpose = prompt(`تعديل الغاية (الحالية: ${remittance.purpose}):`, remittance.purpose);
+                if (newPurpose === null) return;
+                
+                // تحديث البيانات
+                const updatedRemittance = {
+                    senderId: remittance.senderId,
+                    beneficiaryId: remittance.beneficiaryId,
+                    country: newCountry,
+                    amount: parseFloat(newAmount),
+                    reason: newReason,
+                    purpose: newPurpose
+                };
+                
+                const updateResponse = await fetch(`${API_BASE_URL}/remittances/${remittanceId}`, {
+                    method: 'PUT',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify(updatedRemittance)
+                });
+                
+                if (!updateResponse.ok) {
+                    const errorData = await updateResponse.json();
+                    throw new Error(errorData.message || 'فشل في تحديث الحوالة');
+                }
+                
+                alert('تم تحديث الحوالة بنجاح!');
+                searchRemittances(); // تحديث القائمة
+            } catch (error) {
+                alert(`خطأ: ${error.message}`);
+                console.error('Error updating remittance:', error);
+            }
+        }
+
+        // حذف حوالة
+        async function deleteRemittance(remittanceId, reference) {
+            if (!confirm(`هل أنت متأكد من حذف الحوالة رقم "${reference}"؟\n\nتحذير: لا يمكن حذف حوالة مرتبطة بطلبات تعديل.`)) {
+                return;
+            }
+
+            try {
+                const response = await fetch(`${API_BASE_URL}/remittances/${remittanceId}`, {
+                    method: 'DELETE'
+                });
+
+                if (!response.ok) {
+                    const errorData = await response.json();
+                    throw new Error(errorData.message || 'فشل في حذف الحوالة');
+                }
+
+                alert('تم حذف الحوالة بنجاح!');
+                searchRemittances(); // تحديث القائمة
+            } catch (error) {
+                alert(`خطأ: ${error.message}`);
+                console.error('Error deleting remittance:', error);
+            }
+        }
+
+        // إرجاع حوالة للحالة السابقة مع ملاحظات
+        async function returnToPending(reference) {
+            // إنشاء نموذج منبثق لطلب الملاحظات
+            const notes = prompt('يرجى كتابة سبب الإرجاع (اختياري):');
+            if (notes === null) return; // المستخدم ألغى العملية
+
+            if (!confirm(`هل أنت متأكد من إرجاع الحوالة "${reference}" للحالة السابقة؟`)) {
+                return;
+            }
+
+            try {
+                const response = await fetch(`${API_BASE_URL}/remittances/return`, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify({ 
+                        reference: reference,
+                        notes: notes || ''
+                    })
+                });
+
+                if (!response.ok) {
+                    const errorData = await response.json();
+                    throw new Error(errorData.message || 'فشل في إرجاع الحوالة');
+                }
+
+                alert('تم إرجاع الحوالة بنجاح!');
+                searchRemittances(); // تحديث القائمة
+            } catch (error) {
+                alert(`خطأ: ${error.message}`);
+                console.error('Error returning remittance:', error);
+            }
+        }
+
+        // مسح فلتر التواريخ
+        function clearDateFilters() {
+            document.getElementById('fromDate').value = '';
+            document.getElementById('toDate').value = '';
+            // إذا كان هناك نص بحث، نعيد البحث بدون التواريخ
+            const q = document.getElementById('query').value.trim();
+            if (q) {
+                searchRemittances();
+            } else {
+                // إعادة تعيين النتائج
+                document.getElementById('results').innerHTML = `<tr><td colspan="14" class="empty">ابدأ البحث بالاسم أو الرقم الوطني أو الرقم المرجعي أو حدد فترة زمنية</td></tr>`;
+                document.getElementById('totalSum').textContent = '0.00';
+                const dc = document.getElementById('detailsCard'); if (dc) dc.style.display = 'none';
+            }
+        }
+
+        document.addEventListener('DOMContentLoaded', () => {
+            const input = document.getElementById('query');
+            const btn = document.getElementById('searchBtn');
+            document.getElementById('results').innerHTML = `<tr><td colspan="14" class="empty">ابدأ البحث بالاسم أو الرقم الوطني أو الرقم المرجعي أو حدد فترة زمنية</td></tr>`;
+            document.getElementById('totalSum').textContent = '0.00';
+            if (btn) btn.addEventListener('click', searchRemittances);
+            if (input) input.addEventListener('keyup', (e) => { if (e.key === 'Enter') searchRemittances(); });
+        });
+    </script>
+</head>
+<body>
+    <div class="container">
+        <header class="header">
+            <div style="display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap;">
+                <div class="logo">
+                    <i class="fas fa-list"></i>
+                    <h1>قائمة الحوالات</h1>
+                </div>
+                <a href="index.html" style="color: #ffffff; text-decoration: none; font-size: 16px; display: flex; align-items: center; gap: 6px; transition: opacity 0.3s;">
+                    <i class="fas fa-home"></i>
+                    <span>العودة للصفحة الرئيسية</span>
+                </a>
+            </div>
+            <p class="subtitle">ابحث بالرقم الوطني أو الاسم العربي أو الاسم الإنجليزي أو الرقم المرجعي أو حدد فترة زمنية</p>
+        </header>
+
+        <main class="main-content">
+            <div class="card">
+                <div class="search-panel">
+                    <input id="query" class="search-input" type="text" placeholder="ابحث هنا..." oninput="onChange(() => searchRemittances())">
+                    
+                    <div class="date-filter-panel">
+                        <div class="date-filter-group">
+                            <label class="date-filter-label" for="fromDate"><i class="fas fa-calendar-alt"></i> من تاريخ:</label>
+                            <input id="fromDate" class="date-filter-input" type="date" onchange="searchRemittances()">
+                        </div>
+                        <div class="date-filter-group">
+                            <label class="date-filter-label" for="toDate"><i class="fas fa-calendar-alt"></i> إلى تاريخ:</label>
+                            <input id="toDate" class="date-filter-input" type="date" onchange="searchRemittances()">
+                        </div>
+                        <button class="btn btn-secondary" onclick="clearDateFilters()" title="مسح الفلتر">
+                            <i class="fas fa-times"></i> مسح التواريخ
+                        </button>
+                    </div>
+                    
+                    <button id="searchBtn" class="btn btn-primary" style="margin-top:10px"><i class="fas fa-search"></i> بحث</button>
+                </div>
+                <table class="table">
+                    <thead>
+                        <tr>
+                            <th>المرجع</th>
+                            <th>المرسل (عربي)</th>
+                            <th>المرسل (English)</th>
+                            <th>المستفيد (عربي)</th>
+                            <th>المستفيد (English)</th>
+                            <th class="hidden-column">الدولة</th>
+                            <th class="hidden-column">المبلغ</th>
+                            <th class="hidden-column">العمولة</th>
+                            <th class="hidden-column">الصندوق المرسل</th>
+                            <th class="hidden-column">الصندوق المستقبل</th>
+                            <th class="hidden-column">تاريخ الإرسال</th>
+                            <th class="hidden-column">تاريخ السحب</th>
+                            <th>الحالة</th>
+                            <th>الإجراءات</th>
+                        </tr>
+                    </thead>
+                    <tbody id="results"></tbody>
+                </table>
+                <div class="total-sum">
+                    <h3>المجموع الكلي للحوالات</h3>
+                    <div class="sum"><span id="totalSum">0.00</span> د.أ</div>
+                </div>
+                <div id="detailsCard" class="details-card" style="display:none;"></div>
+            </div>
+        </main>
+
+        <footer class="footer">
+            <p> نظام Alawneh-Eway. جميع الحقوق محفوظة. &copy; 2025</p>
+        </footer>
+    </div>
+    
+    <!-- Modal التفاصيل الكاملة -->
+    <div id="fullDetailsModal" class="full-details-modal"></div>
+    
+    <script src="js/app.js"></script>
+</body>
+</html>
+
+
