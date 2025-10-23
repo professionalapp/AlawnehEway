@@ -28,6 +28,23 @@ app.UseHttpsRedirection();
 app.UseDefaultFiles();
 app.UseStaticFiles();
 
+// تطبيق Migrations تلقائياً في Production
+using (var scope = app.Services.CreateScope())
+{
+    var db = scope.ServiceProvider.GetRequiredService<ApplicationDbContext>();
+    if (app.Environment.IsProduction())
+    {
+        try
+        {
+            await db.Database.MigrateAsync();
+        }
+        catch (Exception ex)
+        {
+            Console.WriteLine($"Migration error: {ex.Message}");
+        }
+    }
+}
+
 // تطبيع الدول المخزنة في قاعدة البيانات عند الإقلاع لضمان التوحيد
 using (var scope = app.Services.CreateScope())
 {
