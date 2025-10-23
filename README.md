@@ -1,6 +1,5 @@
 # Alawneh Eway - Money Transfer System
 
-## نظم الحوالات المالية - العوني
 
 A professional money transfer and remittance system built with ASP.NET Core.
 
