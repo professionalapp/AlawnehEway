@@ -451,6 +451,36 @@
                 margin-top: 10px;
             }
         }
+
+        /* تنسيق التبويبات */
+        .transaction-tab.active {
+            color: #007bff !important;
+            border-bottom-color: #007bff !important;
+            background: rgba(0, 123, 255, 0.05);
+        }
+
+        .transaction-tab:hover {
+            color: #007bff;
+            background: rgba(0, 123, 255, 0.05);
+        }
+
+        /* زر الحركات */
+        .btn-transactions {
+            background: linear-gradient(135deg, #17a2b8 0%, #138496 100%);
+            color: white;
+            padding: 6px 12px;
+            border: none;
+            border-radius: 6px;
+            cursor: pointer;
+            font-size: 12px;
+            font-weight: 600;
+            transition: all 0.3s;
+        }
+
+        .btn-transactions:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 4px 12px rgba(23, 162, 184, 0.4);
+        }
     </style>
 </head>
 <body>
@@ -509,8 +539,7 @@
                                 <th><i class="fas fa-shield-alt"></i> الصلاحية</th>
                                 <th><i class="fas fa-building"></i> القسم</th>
                                 <th><i class="fas fa-wallet"></i> الرصيد الحالي</th>
-                                <th><i class="fas fa-paper-plane"></i> الحوالات الصادرة</th>
-                                <th><i class="fas fa-download"></i> الحوالات الواردة</th>
+                                <th><i class="fas fa-exchange-alt"></i> الحركات</th>
                                 <th><i class="fas fa-toggle-on"></i> الحالة</th>
                                 <th><i class="fas fa-calendar-plus"></i> تاريخ الإنشاء</th>
                                 <th><i class="fas fa-clock"></i> آخر تسجيل دخول</th>
@@ -519,7 +548,7 @@
                         </thead>
                         <tbody id="cashiersTableBody">
                             <tr>
-                                <td colspan="11" class="empty-state">
+                                <td colspan="9" class="empty-state">
                                     <i class="fas fa-spinner fa-spin"></i>
                                     <p>جاري تحميل البيانات...</p>
                                 </td>
@@ -671,6 +700,67 @@
         </div>
     </div>
 
+    <!-- Modal الحركات -->
+    <div id="transactionsModal" class="modal">
+        <div class="modal-content" style="max-width: 900px;">
+            <div class="modal-header">
+                <h2><i class="fas fa-exchange-alt"></i> حركات الصندوق: <span id="transactionsCashierName"></span></h2>
+                <button class="close-btn" onclick="closeTransactionsModal()">&times;</button>
+            </div>
+            
+            <!-- ملخص الحركات -->
+            <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 15px; margin-bottom: 25px;">
+                <div style="background: linear-gradient(135deg, #28a745 0%, #20c997 100%); padding: 20px; border-radius: 12px; color: white; text-align: center;">
+                    <i class="fas fa-paper-plane" style="font-size: 24px; margin-bottom: 8px;"></i>
+                    <div style="font-size: 28px; font-weight: bold; color: white;" id="outgoingRemittancesCount">0</div>
+                    <div style="font-size: 13px; opacity: 0.9;">حوالات صادرة</div>
+                </div>
+                
+                <div style="background: linear-gradient(135deg, #007bff 0%, #0056b3 100%); padding: 20px; border-radius: 12px; color: white; text-align: center;">
+                    <i class="fas fa-download" style="font-size: 24px; margin-bottom: 8px;"></i>
+                    <div style="font-size: 28px; font-weight: bold; color: white;" id="incomingRemittancesCount">0</div>
+                    <div style="font-size: 13px; opacity: 0.9;">حوالات واردة</div>
+                </div>
+                
+                <div style="background: linear-gradient(135deg, #ffc107 0%, #ff9800 100%); padding: 20px; border-radius: 12px; color: white; text-align: center;">
+                    <i class="fas fa-coins" style="font-size: 24px; margin-bottom: 8px;"></i>
+                    <div style="font-size: 28px; font-weight: bold; color: white !important;" id="currencySalesCount">0</div>
+                    <div style="font-size: 13px; opacity: 0.9;">عملات مباعة</div>
+                </div>
+                
+                <div style="background: linear-gradient(135deg, #17a2b8 0%, #138496 100%); padding: 20px; border-radius: 12px; color: white; text-align: center;">
+                    <i class="fas fa-shopping-cart" style="font-size: 24px; margin-bottom: 8px;"></i>
+                    <div style="font-size: 28px; font-weight: bold; color: white !important;" id="currencyPurchasesCount">0</div>
+                    <div style="font-size: 13px; opacity: 0.9;">عملات مشتراة</div>
+                </div>
+            </div>
+            
+            <!-- تبويبات الحركات -->
+            <div style="display: flex; gap: 10px; margin-bottom: 20px; border-bottom: 2px solid #e9ecef;">
+                <button class="transaction-tab active" onclick="switchTransactionTab('outgoing')" id="outgoingTab" style="flex: 1; padding: 12px; border: none; background: transparent; cursor: pointer; font-weight: 600; color: #666; border-bottom: 3px solid transparent; transition: all 0.3s;">
+                    <i class="fas fa-paper-plane"></i> الحوالات الصادرة
+                </button>
+                <button class="transaction-tab" onclick="switchTransactionTab('incoming')" id="incomingTab" style="flex: 1; padding: 12px; border: none; background: transparent; cursor: pointer; font-weight: 600; color: #666; border-bottom: 3px solid transparent; transition: all 0.3s;">
+                    <i class="fas fa-download"></i> الحوالات الواردة
+                </button>
+                <button class="transaction-tab" onclick="switchTransactionTab('sales')" id="salesTab" style="flex: 1; padding: 12px; border: none; background: transparent; cursor: pointer; font-weight: 600; color: #666; border-bottom: 3px solid transparent; transition: all 0.3s;">
+                    <i class="fas fa-coins"></i> عملات مباعة
+                </button>
+                <button class="transaction-tab" onclick="switchTransactionTab('purchases')" id="purchasesTab" style="flex: 1; padding: 12px; border: none; background: transparent; cursor: pointer; font-weight: 600; color: #666; border-bottom: 3px solid transparent; transition: all 0.3s;">
+                    <i class="fas fa-shopping-cart"></i> عملات مشتراة
+                </button>
+            </div>
+            
+            <!-- محتوى التبويبات -->
+            <div id="transactionsContent" style="max-height: 70vh; overflow-y: auto; padding-bottom: 30px; scroll-behavior: smooth;">
+                <div style="text-align: center; padding: 40px; color: #999;">
+                    <i class="fas fa-spinner fa-spin" style="font-size: 48px; margin-bottom: 15px;"></i>
+                    <p>جاري تحميل البيانات...</p>
+                </div>
+            </div>
+        </div>
+    </div>
+
     <!-- Modal تغيير الصلاحية -->
     <div id="changeRoleModal" class="modal">
         <div class="modal-content">
@@ -789,7 +879,7 @@
             if (cashiers.length === 0) {
                 tbody.innerHTML = `
                     <tr>
-                        <td colspan="11" class="empty-state">
+                        <td colspan="9" class="empty-state">
                             <i class="fas fa-inbox"></i>
                             <p>لا توجد صناديق مسجلة</p>
                             <button class="btn btn-primary" onclick="openAddModal()">
@@ -830,18 +920,9 @@
                     </td>
                     <td>
                         ${isComplianceOrAdmin ? '<span style="color: #999;">-</span>' : `
-                        <span class="badge badge-info">
-                            <i class="fas fa-paper-plane"></i>
-                            ${cashier.outgoingRemittances || 0}
-                        </span>
-                        `}
-                    </td>
-                    <td>
-                        ${isComplianceOrAdmin ? '<span style="color: #999;">-</span>' : `
-                        <span class="badge badge-success">
-                            <i class="fas fa-download"></i>
-                            ${cashier.incomingRemittances || 0}
-                        </span>
+                        <button class="btn-transactions" onclick="openTransactionsModal(${cashier.id}, '${cashier.username}')" title="عرض جميع الحركات">
+                            <i class="fas fa-exchange-alt"></i> عرض الحركات
+                        </button>
                         `}
                     </td>
                     <td>
@@ -1157,7 +1238,7 @@
             const tbody = document.getElementById('cashiersTableBody');
             tbody.innerHTML = `
                 <tr>
-                    <td colspan="11" class="empty-state" style="color: #dc3545;">
+                    <td colspan="9" class="empty-state" style="color: #dc3545;">
                         <i class="fas fa-exclamation-triangle"></i>
                         <p>${message}</p>
                         <button class="btn btn-primary" onclick="loadCashiers()">
@@ -1298,6 +1379,402 @@
             deleteCashier(currentCashierData.id, currentCashierData.username);
         }
 
+        // إدارة نافذة الحركات
+        let currentTransactionsData = {
+            outgoing: [],
+            incoming: [],
+            sales: [],
+            purchases: []
+        };
+        let currentTransactionTab = 'outgoing';
+
+        async function openTransactionsModal(cashierId, username) {
+            console.log(`فتح نافذة الحركات للصندوق: ${cashierId}, المستخدم: ${username}`);
+            document.getElementById('transactionsCashierName').textContent = username;
+            document.getElementById('transactionsModal').style.display = 'block';
+            
+            // إعادة تعيين التبويب النشط
+            currentTransactionTab = 'outgoing';
+            document.querySelectorAll('.transaction-tab').forEach(tab => tab.classList.remove('active'));
+            document.getElementById('outgoingTab').classList.add('active');
+            
+            // إعادة تعيين العدادات إلى 0
+            document.getElementById('outgoingRemittancesCount').textContent = '0';
+            document.getElementById('incomingRemittancesCount').textContent = '0';
+            document.getElementById('currencySalesCount').textContent = '0';
+            document.getElementById('currencyPurchasesCount').textContent = '0';
+            
+            // اختبار API مباشرة
+            await testCurrencyExchangesAPI(cashierId);
+            
+            // تحميل البيانات
+            await loadTransactions(cashierId);
+        }
+
+        // اختبار API مباشرة
+        async function testCurrencyExchangesAPI(cashierId) {
+            try {
+                console.log(`اختبار API لعمليات تبديل العملات للصندوق: ${cashierId}`);
+                
+                // اختبار جلب جميع البيانات
+                const response = await fetch(`${API_BASE}/currency-exchanges`);
+                if (response.ok) {
+                    const data = await response.json();
+                    console.log(`تم جلب ${data.length} عملية من API`);
+                    
+                    // عرض جميع العمليات المتاحة
+                    console.log('جميع العمليات المتاحة:', data.map(e => ({
+                        id: e.id,
+                        cashierId: e.cashierId,
+                        type: e.type,
+                        currency: e.currency,
+                        amount: e.foreignAmount
+                    })));
+                    
+                    // تصفية حسب الصندوق
+                    const cashierData = data.filter(e => e.cashierId === parseInt(cashierId));
+                    console.log(`عمليات الصندوق ${cashierId}: ${cashierData.length}`);
+                    
+                    // تصفية حسب النوع
+                    const sales = cashierData.filter(e => e.type === 2);
+                    const purchases = cashierData.filter(e => e.type === 1);
+                    
+                    console.log(`عمليات البيع: ${sales.length}`);
+                    console.log(`عمليات الشراء: ${purchases.length}`);
+                    
+                    // تحديث العدادات مباشرة
+                    const salesElement = document.getElementById('currencySalesCount');
+                    const purchasesElement = document.getElementById('currencyPurchasesCount');
+                    
+                    if (salesElement) {
+                        salesElement.textContent = sales.length;
+                        salesElement.style.color = 'white !important';
+                        console.log(`تم تحديث عداد البيع إلى: ${sales.length}`);
+                    }
+                    if (purchasesElement) {
+                        purchasesElement.textContent = purchases.length;
+                        purchasesElement.style.color = 'white !important';
+                        console.log(`تم تحديث عداد الشراء إلى: ${purchases.length}`);
+                    }
+                    
+                    // إذا لم توجد عمليات للصندوق المحدد، اعرض رسالة توضيحية
+                    if (cashierData.length === 0) {
+                        console.warn(`لا توجد عمليات تبديل عملة للصندوق ${cashierId}`);
+                        console.log('العمليات المتاحة للصناديق الأخرى:', data.map(e => e.cashierId).filter((id, index, arr) => arr.indexOf(id) === index));
+                    }
+                } else {
+                    console.error(`فشل في جلب البيانات: ${response.status}`);
+                }
+            } catch (error) {
+                console.error('خطأ في اختبار API:', error);
+            }
+        }
+
+        function closeTransactionsModal() {
+            document.getElementById('transactionsModal').style.display = 'none';
+        }
+
+        async function loadTransactions(cashierId) {
+            try {
+                // جلب الحوالات من API
+                const remittancesResponse = await fetch(`${API_BASE}/remittances`);
+                if (!remittancesResponse.ok) throw new Error('فشل في تحميل الحوالات');
+                
+                const allRemittances = await remittancesResponse.json();
+                
+                // تصفية الحوالات
+                currentTransactionsData.outgoing = allRemittances.filter(r => r.senderCashier && r.senderCashier.id === cashierId);
+                currentTransactionsData.incoming = allRemittances.filter(r => r.receiverCashier && r.receiverCashier.id === cashierId);
+                
+                // جلب بيانات تبديل العملات من API
+                try {
+                    console.log(`جلب بيانات تبديل العملات للصندوق: ${cashierId} (نوع: ${typeof cashierId})`);
+                    
+                    // جلب جميع البيانات أولاً
+                    const allExchangesResponse = await fetch(`${API_BASE}/currency-exchanges`);
+                    if (allExchangesResponse.ok) {
+                        const allExchanges = await allExchangesResponse.json();
+                        console.log(`جميع عمليات تبديل العملات: ${allExchanges.length}`);
+                        console.log('تفاصيل العمليات:', allExchanges);
+                        
+                        // تصفية حسب الصندوق
+                        const cashierExchanges = allExchanges.filter(e => {
+                            const matches = e.cashierId === parseInt(cashierId) || e.cashierId === cashierId;
+                            console.log(`مقارنة: ${e.cashierId} === ${cashierId} = ${matches} (نوع: ${typeof e.cashierId})`);
+                            return matches;
+                        });
+                        
+                        // إذا لم توجد عمليات للصندوق المحدد، اعرض جميع العمليات للاختبار
+                        if (cashierExchanges.length === 0) {
+                            console.log(`لا توجد عمليات للصندوق ${cashierId}، عرض جميع العمليات للاختبار`);
+                            console.log('جميع العمليات المتاحة:', allExchanges.map(e => ({ id: e.id, cashierId: e.cashierId, type: e.type, currency: e.currency })));
+                        }
+                        console.log(`عمليات الصندوق ${cashierId}: ${cashierExchanges.length}`);
+                        console.log('عمليات الصندوق:', cashierExchanges);
+                        
+                        // تصفية حسب نوع العملية
+                        currentTransactionsData.sales = cashierExchanges.filter(e => e.type === 2); // Sell = 2
+                        currentTransactionsData.purchases = cashierExchanges.filter(e => e.type === 1); // Buy = 1
+                        
+                        console.log(`عمليات البيع (Type=2): ${currentTransactionsData.sales.length}`);
+                        console.log(`عمليات الشراء (Type=1): ${currentTransactionsData.purchases.length}`);
+                        console.log('تفاصيل عمليات البيع:', currentTransactionsData.sales);
+                        console.log('تفاصيل عمليات الشراء:', currentTransactionsData.purchases);
+                        
+                        // للاختبار: إذا لم توجد عمليات للصندوق المحدد، استخدم جميع العمليات
+                        if (cashierExchanges.length === 0 && allExchanges.length > 0) {
+                            console.log('استخدام جميع العمليات للاختبار...');
+                            currentTransactionsData.sales = allExchanges.filter(e => e.type === 2);
+                            currentTransactionsData.purchases = allExchanges.filter(e => e.type === 1);
+                            console.log(`عمليات البيع الإجمالية: ${currentTransactionsData.sales.length}`);
+                            console.log(`عمليات الشراء الإجمالية: ${currentTransactionsData.purchases.length}`);
+                        }
+                    } else {
+                        throw new Error(`HTTP ${allExchangesResponse.status}: ${allExchangesResponse.statusText}`);
+                    }
+                } catch (exchangeError) {
+                    console.error('خطأ في جلب بيانات تبديل العملات:', exchangeError);
+                    currentTransactionsData.sales = [];
+                    currentTransactionsData.purchases = [];
+                }
+                
+                // تحديث العدادات
+                console.log('تحديث العدادات:');
+                console.log(`الحوالات الصادرة: ${currentTransactionsData.outgoing.length}`);
+                console.log(`الحوالات الواردة: ${currentTransactionsData.incoming.length}`);
+                console.log(`عمليات البيع: ${currentTransactionsData.sales.length}`);
+                console.log(`عمليات الشراء: ${currentTransactionsData.purchases.length}`);
+                
+                const outgoingElement = document.getElementById('outgoingRemittancesCount');
+                const incomingElement = document.getElementById('incomingRemittancesCount');
+                const salesElement = document.getElementById('currencySalesCount');
+                const purchasesElement = document.getElementById('currencyPurchasesCount');
+                
+                console.log('العناصر الموجودة:', {
+                    outgoing: !!outgoingElement,
+                    incoming: !!incomingElement,
+                    sales: !!salesElement,
+                    purchases: !!purchasesElement
+                });
+                
+                // تحديث العدادات مع التأكد من وجود العناصر
+                if (outgoingElement) {
+                    outgoingElement.textContent = currentTransactionsData.outgoing.length;
+                    console.log(`تم تحديث الحوالات الصادرة: ${currentTransactionsData.outgoing.length}`);
+                }
+                if (incomingElement) {
+                    incomingElement.textContent = currentTransactionsData.incoming.length;
+                    console.log(`تم تحديث الحوالات الواردة: ${currentTransactionsData.incoming.length}`);
+                }
+                if (salesElement) {
+                    salesElement.textContent = currentTransactionsData.sales.length;
+                    console.log(`تم تحديث عمليات البيع: ${currentTransactionsData.sales.length}`);
+                    // إضافة تأثير بصري للتأكد من التحديث
+                    salesElement.style.color = 'white !important';
+                }
+                if (purchasesElement) {
+                    purchasesElement.textContent = currentTransactionsData.purchases.length;
+                    console.log(`تم تحديث عمليات الشراء: ${currentTransactionsData.purchases.length}`);
+                    // إضافة تأثير بصري للتأكد من التحديث
+                    purchasesElement.style.color = 'white !important';
+                }
+                
+                // التأكد من تحديث العدادات مع إعادة تحديث إضافي
+                setTimeout(() => {
+                    console.log('العدادات النهائية:');
+                    console.log(`الحوالات الصادرة: ${outgoingElement?.textContent || 'غير موجود'}`);
+                    console.log(`الحوالات الواردة: ${incomingElement?.textContent || 'غير موجود'}`);
+                    console.log(`عمليات البيع: ${salesElement?.textContent || 'غير موجود'}`);
+                    console.log(`عمليات الشراء: ${purchasesElement?.textContent || 'غير موجود'}`);
+                    
+                    // إعادة تحديث إضافي للتأكد
+                    if (salesElement && currentTransactionsData.sales.length > 0) {
+                        salesElement.textContent = currentTransactionsData.sales.length;
+                        salesElement.style.color = 'white !important';
+                        console.log(`إعادة تحديث عمليات البيع: ${currentTransactionsData.sales.length}`);
+                    }
+                    if (purchasesElement && currentTransactionsData.purchases.length > 0) {
+                        purchasesElement.textContent = currentTransactionsData.purchases.length;
+                        purchasesElement.style.color = 'white !important';
+                        console.log(`إعادة تحديث عمليات الشراء: ${currentTransactionsData.purchases.length}`);
+                    }
+                }, 200);
+                
+                // عرض التبويب الحالي
+                switchTransactionTab(currentTransactionTab);
+                
+            } catch (error) {
+                console.error('Error loading transactions:', error);
+                document.getElementById('transactionsContent').innerHTML = `
+                    <div style="text-align: center; padding: 40px; color: #dc3545;">
+                        <i class="fas fa-exclamation-triangle" style="font-size: 48px; margin-bottom: 15px;"></i>
+                        <p>حدث خطأ في تحميل البيانات</p>
+                    </div>
+                `;
+            }
+        }
+
+        function switchTransactionTab(tabName) {
+            currentTransactionTab = tabName;
+            
+            // تحديث التبويبات النشطة
+            document.querySelectorAll('.transaction-tab').forEach(tab => tab.classList.remove('active'));
+            document.getElementById(tabName + 'Tab').classList.add('active');
+            
+            // عرض المحتوى
+            const content = document.getElementById('transactionsContent');
+            let data = [];
+            let title = '';
+            let emptyMessage = '';
+            
+            switch(tabName) {
+                case 'outgoing':
+                    data = currentTransactionsData.outgoing;
+                    title = 'الحوالات الصادرة';
+                    emptyMessage = 'لا توجد حوالات صادرة';
+                    break;
+                case 'incoming':
+                    data = currentTransactionsData.incoming;
+                    title = 'الحوالات الواردة';
+                    emptyMessage = 'لا توجد حوالات واردة';
+                    break;
+                case 'sales':
+                    data = currentTransactionsData.sales;
+                    title = 'عمليات بيع العملات';
+                    emptyMessage = 'لا توجد عمليات بيع';
+                    console.log(`عرض عمليات البيع: ${data.length} عملية`);
+                    console.log('تفاصيل عمليات البيع:', data);
+                    break;
+                case 'purchases':
+                    data = currentTransactionsData.purchases;
+                    title = 'عمليات شراء العملات';
+                    emptyMessage = 'لا توجد عمليات شراء';
+                    console.log(`عرض عمليات الشراء: ${data.length} عملية`);
+                    console.log('تفاصيل عمليات الشراء:', data);
+                    break;
+            }
+            
+            console.log(`تبديل إلى التبويب: ${tabName}, عدد البيانات: ${data.length}`);
+            
+            if (data.length === 0) {
+                content.innerHTML = `
+                    <div style="text-align: center; padding: 40px; color: #999;">
+                        <i class="fas fa-inbox" style="font-size: 48px; margin-bottom: 15px; opacity: 0.3;"></i>
+                        <p style="font-size: 16px;">${emptyMessage}</p>
+                    </div>
+                `;
+                return;
+            }
+            
+            // عرض البيانات حسب النوع
+            if (tabName === 'outgoing' || tabName === 'incoming') {
+                displayRemittances(data, content);
+            } else {
+                displayCurrencyExchanges(data, content);
+            }
+        }
+
+        function displayRemittances(remittances, container) {
+            container.innerHTML = `
+                <table style="width: 100%; border-collapse: collapse; font-size: 13px; margin-bottom: 20px;">
+                    <thead style="background: #f8f9fa; position: sticky; top: 0;">
+                        <tr>
+                            <th style="padding: 10px; text-align: right; border-bottom: 2px solid #dee2e6;">الرقم المرجعي</th>
+                            <th style="padding: 10px; text-align: right; border-bottom: 2px solid #dee2e6;">المرسل/المستفيد</th>
+                            <th style="padding: 10px; text-align: right; border-bottom: 2px solid #dee2e6;">الدولة</th>
+                            <th style="padding: 10px; text-align: center; border-bottom: 2px solid #dee2e6;">المبلغ</th>
+                            <th style="padding: 10px; text-align: center; border-bottom: 2px solid #dee2e6;">العمولة</th>
+                            <th style="padding: 10px; text-align: center; border-bottom: 2px solid #dee2e6;">الحالة</th>
+                            <th style="padding: 10px; text-align: center; border-bottom: 2px solid #dee2e6;">التاريخ</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        ${remittances.map(r => `
+                            <tr style="border-bottom: 1px solid #f0f0f0;">
+                                <td style="padding: 10px;"><strong style="color: #007bff;">${r.reference}</strong></td>
+                                <td style="padding: 10px;">
+                                    ${r.sender ? r.sender.nameAr : '-'} 
+                                    ${r.beneficiary ? `(${r.beneficiary.nameAr})` : ''}
+                                </td>
+                                <td style="padding: 10px;">${r.country}</td>
+                                <td style="padding: 10px; text-align: center; font-weight: bold; color: #28a745;">${r.amount.toFixed(2)} د.أ</td>
+                                <td style="padding: 10px; text-align: center; color: #666;">${r.fee.toFixed(2)} د.أ</td>
+                                <td style="padding: 10px; text-align: center;">
+                                    <span style="padding: 4px 10px; border-radius: 12px; font-size: 11px; font-weight: 600; background: ${getStatusColor(r.status)}; color: white;">
+                                        ${getStatusArabic(r.status)}
+                                    </span>
+                                </td>
+                                <td style="padding: 10px; text-align: center; color: #666; font-size: 12px;">${formatDate(r.createdAt)}</td>
+                            </tr>
+                        `).join('')}
+                    </tbody>
+                </table>
+            `;
+        }
+
+        function displayCurrencyExchanges(exchanges, container) {
+            container.innerHTML = `
+                <table style="width: 100%; border-collapse: collapse; font-size: 13px; margin-bottom: 20px;">
+                    <thead style="background: #f8f9fa; position: sticky; top: 0;">
+                        <tr>
+                            <th style="padding: 10px; text-align: right; border-bottom: 2px solid #dee2e6;">الرقم المرجعي</th>
+                            <th style="padding: 10px; text-align: right; border-bottom: 2px solid #dee2e6;">النوع</th>
+                            <th style="padding: 10px; text-align: right; border-bottom: 2px solid #dee2e6;">العملة</th>
+                            <th style="padding: 10px; text-align: center; border-bottom: 2px solid #dee2e6;">المبلغ</th>
+                            <th style="padding: 10px; text-align: center; border-bottom: 2px solid #dee2e6;">سعر الصرف</th>
+                            <th style="padding: 10px; text-align: center; border-bottom: 2px solid #dee2e6;">المبلغ بالدينار</th>
+                            <th style="padding: 10px; text-align: center; border-bottom: 2px solid #dee2e6;">الربح</th>
+                            <th style="padding: 10px; text-align: right; border-bottom: 2px solid #dee2e6;">العميل</th>
+                            <th style="padding: 10px; text-align: center; border-bottom: 2px solid #dee2e6;">التاريخ</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        ${exchanges.map(e => `
+                            <tr style="border-bottom: 1px solid #f0f0f0;">
+                                <td style="padding: 10px;"><strong style="color: #007bff;">${e.reference}</strong></td>
+                                <td style="padding: 10px;">
+                                    ${e.type === 1 ? 'شراء' : 'بيع'}
+                                </td>
+                                <td style="padding: 10px;">
+                                    <strong style="color: #007bff;">${e.currency}</strong>
+                                    ${e.country ? `<br><small style="color: #999;">${e.country}</small>` : ''}
+                                </td>
+                                <td style="padding: 10px; text-align: center; font-weight: bold;">${e.foreignAmount.toFixed(2)}</td>
+                                <td style="padding: 10px; text-align: center; color: #666;">${e.exchangeRate.toFixed(5)}</td>
+                                <td style="padding: 10px; text-align: center; font-weight: bold; color: #28a745;">${e.jodAmount.toFixed(2)} د.أ</td>
+                                <td style="padding: 10px; text-align: center; font-weight: bold; color: ${e.profit >= 0 ? '#28a745' : '#dc3545'};">${e.profit >= 0 ? '+' : ''}${e.profit.toFixed(2)} د.أ</td>
+                                <td style="padding: 10px;">
+                                    ${e.customerName || '<span style="color: #999;">-</span>'}
+                                    ${e.customerNationalId ? `<br><small style="color: #999;">${e.customerNationalId}</small>` : ''}
+                                </td>
+                                <td style="padding: 10px; text-align: center; color: #666; font-size: 12px;">${formatDate(e.createdAt)}</td>
+                            </tr>
+                        `).join('')}
+                    </tbody>
+                </table>
+            `;
+        }
+
+        function getStatusColor(status) {
+            switch(status) {
+                case 'Paid': return '#28a745';
+                case 'Payment pending': return '#ffc107';
+                case 'Pending Approval': return '#17a2b8';
+                case 'Compliance Hold': return '#dc3545';
+                default: return '#6c757d';
+            }
+        }
+
+        function getStatusArabic(status) {
+            switch(status) {
+                case 'Paid': return 'مسددة';
+                case 'Payment pending': return 'بانتظار الدفع';
+                case 'Pending Approval': return 'بانتظار الموافقة';
+                case 'Compliance Hold': return 'إيقاف التزام';
+                default: return status;
+            }
+        }
+
         // إغلاق Modal عند النقر خارجها
         window.onclick = function(event) {
             const addModal = document.getElementById('addCashierModal');
@@ -1306,6 +1783,7 @@
             const initialBalanceModal = document.getElementById('initialBalanceModal');
             const changeRoleModal = document.getElementById('changeRoleModal');
             const actionsModal = document.getElementById('actionsModal');
+            const transactionsModal = document.getElementById('transactionsModal');
             
             if (event.target == addModal) {
                 closeAddModal();
@@ -1324,6 +1802,9 @@
             }
             if (event.target == actionsModal) {
                 closeActionsModal();
+            }
+            if (event.target == transactionsModal) {
+                closeTransactionsModal();
             }
         }
 

@@ -41,9 +41,25 @@
         .total-sum { background: transparent; padding: 15px; margin-top: 15px; text-align: center; }
         .total-sum h3 { color: #6c757d; margin: 0; }
         .total-sum .sum { font-size: 24px; font-weight: bold; color: #6c757d; }
-        .details-card { background: transparent; color: #6c757d; padding: 20px; margin-top: 16px; }
+        .details-card { 
+            background: #f8f9fa; 
+            color: #6c757d; 
+            padding: 20px; 
+            margin: 20px 0; 
+            border: 1px solid #dee2e6; 
+            border-radius: 8px; 
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+            position: relative;
+            z-index: 10;
+        }
         .details-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
         .details-card strong { color: #6c757d; }
+        
+        @keyframes fadeIn {
+            from { opacity: 0; transform: translateY(20px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+        
         .badge-status { padding: 4px 10px; font-weight: bold; color: #6c757d; display: inline-block; }
         .badge-pending { color: #6c757d; }
         .badge-paid { color: #6c757d; }
@@ -221,11 +237,121 @@
                 margin: 5% auto;
             }
         }
+        
+        /* أنماط مفتاح التبديل */
+        .data-toggle-switch {
+            display: inline-flex;
+            background: rgba(255, 255, 255, 0.2);
+            border-radius: 25px;
+            padding: 4px;
+            box-shadow: 0 2px 10px rgba(0, 0, 0, 0.1);
+        }
+        
+        .toggle-btn {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            padding: 12px 20px;
+            border: none;
+            background: transparent;
+            color: rgba(255, 255, 255, 0.7);
+            border-radius: 20px;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            font-size: 14px;
+            font-weight: 600;
+            min-width: 140px;
+            justify-content: center;
+        }
+        
+        .toggle-btn:hover {
+            color: #ffffff;
+            background: rgba(255, 255, 255, 0.1);
+        }
+        
+        .toggle-btn.active {
+            background: #ffffff;
+            color: #007bff;
+            box-shadow: 0 2px 8px rgba(0, 0, 0, 0.15);
+        }
+        
+        .toggle-btn i {
+            font-size: 16px;
+        }
+        
+        @media (max-width: 768px) {
+            .toggle-btn {
+                padding: 10px 15px;
+                min-width: 120px;
+                font-size: 13px;
+            }
+            
+            .toggle-btn i {
+                font-size: 14px;
+            }
+        }
     </style>
     <script>
         const API_BASE_URL = window.location.origin;
         let timer = null;
         let currentList = [];
+        let currentDataType = 'remittances'; // 'remittances' أو 'exchanges'
+
+        // دالة التبديل بين نوعي البيانات
+        function switchDataType(type) {
+            currentDataType = type;
+            
+            // تحديث حالة الأزرار
+            document.getElementById('remittancesToggle').classList.toggle('active', type === 'remittances');
+            document.getElementById('exchangesToggle').classList.toggle('active', type === 'exchanges');
+            
+            // إظهار/إخفاء الجدول المناسب
+            if (type === 'remittances') {
+                document.getElementById('remittancesTable').style.display = 'table';
+                document.getElementById('exchangesTable').style.display = 'none';
+            } else {
+                document.getElementById('remittancesTable').style.display = 'none';
+                document.getElementById('exchangesTable').style.display = 'table';
+            }
+            
+            // تحديث نص البحث
+            updateSearchPlaceholder();
+            
+            // تحديث عنوان المجموع الكلي
+            updateTotalSumTitle();
+            
+            // إعادة تعيين النتائج ومسح البيانات القديمة
+            document.getElementById('remittancesResults').innerHTML = `<tr><td colspan="13" class="empty">ابدأ البحث بالاسم أو الرقم الوطني أو الرقم المرجعي أو حدد فترة زمنية</td></tr>`;
+            document.getElementById('exchangesResults').innerHTML = `<tr><td colspan="10" class="empty">ابدأ البحث بالاسم أو الرقم الوطني أو الرقم المرجعي أو حدد فترة زمنية</td></tr>`;
+            document.getElementById('totalSum').textContent = '0.00';
+            const dc = document.getElementById('detailsCard'); 
+            if (dc) dc.style.display = 'none';
+            
+            // مسح فلاتر التواريخ عند التبديل
+            document.getElementById('fromDate').value = '';
+            document.getElementById('toDate').value = '';
+        }
+        
+        
+        // تحديث نص البحث
+        function updateSearchPlaceholder() {
+            const searchInput = document.getElementById('query');
+            if (currentDataType === 'remittances') {
+                searchInput.placeholder = 'ابحث في الحوالات...';
+            } else {
+                searchInput.placeholder = 'ابحث في عمليات تصريف العملات...';
+            }
+        }
+        
+        // تحديث عنوان المجموع الكلي
+        function updateTotalSumTitle() {
+            const titleElement = document.getElementById('totalSumTitle');
+            if (currentDataType === 'remittances') {
+                titleElement.textContent = 'المجموع الكلي للحوالات';
+            } else {
+                titleElement.textContent = 'المجموع الكلي لتصريف العملات';
+            }
+        }
 
         // دوال الفاليديشن
         function validateSearchQuery(query) {
@@ -245,7 +371,7 @@
             
             // التحقق من وجود معيار بحث واحد على الأقل
             if (!q && !fromDate && !toDate) {
-                document.getElementById('results').innerHTML = `<tr><td colspan="7" class="empty">يرجى إدخال نص للبحث أو تحديد فترة زمنية</td></tr>`;
+                document.getElementById('results').innerHTML = `<tr><td colspan="13" class="empty">يرجى إدخال نص للبحث أو تحديد فترة زمنية</td></tr>`;
                 document.getElementById('totalSum').textContent = '0.00';
                 const dc = document.getElementById('detailsCard'); if (dc) dc.style.display = 'none';
                 return;
@@ -255,84 +381,150 @@
             if (q) {
                 const queryError = validateSearchQuery(q);
                 if (queryError) {
-                    document.getElementById('results').innerHTML = `<tr><td colspan="7" class="empty">${queryError}</td></tr>`;
+                    document.getElementById('results').innerHTML = `<tr><td colspan="13" class="empty">${queryError}</td></tr>`;
                     document.getElementById('totalSum').textContent = '0.00';
                     const dc = document.getElementById('detailsCard'); if (dc) dc.style.display = 'none';
                     return;
                 }
             }
             
-            let list = [];
+            let results = [];
+            
             try {
-                // بناء URL مع المعاملات
-                let url = `${API_BASE_URL}/remittances/search?`;
                 const params = [];
                 if (q) params.push(`q=${encodeURIComponent(q)}`);
                 if (fromDate) params.push(`fromDate=${encodeURIComponent(fromDate)}`);
                 if (toDate) params.push(`toDate=${encodeURIComponent(toDate)}`);
-                url += params.join('&');
                 
-                const res = await fetch(url);
-                if (!res.ok) {
-                    console.error('خطأ في البحث:', res.status);
-                    document.getElementById('results').innerHTML = `<tr><td colspan="7" class="empty">خطأ في البحث</td></tr>`;
-                    return;
+                if (currentDataType === 'remittances') {
+                    // البحث في الحوالات فقط
+                    let remittancesUrl = `${API_BASE_URL}/remittances/search?`;
+                remittancesUrl += params.join('&');
+                
+                const remittancesRes = await fetch(remittancesUrl);
+                if (remittancesRes.ok) {
+                        results = await remittancesRes.json();
+                    }
+                    
+                    // حساب المجموع الكلي للحوالات
+                    const totalAmount = results.reduce((sum, r) => sum + r.amount, 0);
+                    document.getElementById('totalSum').textContent = totalAmount.toFixed(2);
+                    
+                } else {
+                    // البحث في عمليات تصريف العملات فقط
+                let exchangesUrl = `${API_BASE_URL}/currency-exchanges/search?`;
+                exchangesUrl += params.join('&');
+                
+                const exchangesRes = await fetch(exchangesUrl);
+                if (exchangesRes.ok) {
+                        results = await exchangesRes.json();
+                        console.log('🔍 بيانات عمليات البيع والشراء من API:', results);
+                        if (results.length > 0) {
+                            console.log('🔍 بيانات الصندوق في العملية الأولى:', results[0].cashier);
+                            console.log('🔍 اسم الصندوق في العملية الأولى:', results[0].cashier?.name);
+                            console.log('🔍 معرف الصندوق في العملية الأولى:', results[0].cashier?.id);
+                        }
+                    }
+                    
+                    // حساب المجموع الكلي لتصريف العملات
+                    const totalAmount = results.reduce((sum, e) => sum + e.jodAmount, 0);
+                    document.getElementById('totalSum').textContent = totalAmount.toFixed(2);
                 }
-                list = await res.json();
-                currentList = list;
+                
+                currentList = results;
                 const tbody = document.getElementById('results');
-                if (!list.length) {
-                    tbody.innerHTML = `<tr><td colspan="7" class="empty">لا توجد نتائج مطابقة</td></tr>`;
+                
+                if (!results.length) {
+                    // مسح البيانات القديمة من الجدول المناسب
+                    if (currentDataType === 'remittances') {
+                        document.getElementById('remittancesResults').innerHTML = `<tr><td colspan="13" class="empty">لا توجد نتائج مطابقة</td></tr>`;
+                    } else {
+                        document.getElementById('exchangesResults').innerHTML = `<tr><td colspan="10" class="empty">لا توجد نتائج مطابقة</td></tr>`;
+                    }
                     document.getElementById('totalSum').textContent = '0.00';
                     const dc = document.getElementById('detailsCard'); if (dc) dc.style.display = 'none';
                     return;
                 }
+
+                // عرض النتائج حسب نوع البيانات
+                if (currentDataType === 'remittances') {
+                    const remittancesTbody = document.getElementById('remittancesResults');
+                    remittancesTbody.innerHTML = results.map(item => `
+                        <tr>
+                            <td><span class="pill">${item.reference}</span></td>
+                            <td><strong>${item.sender?.nameAr ?? 'غير محدد'}</strong></td>
+                            <td class="muted">${item.sender?.nationalId ?? 'غير محدد'}</td>
+                            <td><strong>${item.beneficiary?.nameAr ?? 'غير محدد'}</strong></td>
+                            <td class="hidden-column">${getCountryLabel(item.country || item.Country) || (item.country || item.Country || '')}</td>
+                            <td class="hidden-column"><strong class="amount">${item.amount.toFixed(2)} د.أ</strong></td>
+                            <td class="hidden-column"><span class="fee">${item.fee.toFixed(2)} د.أ</span></td>
+                            <td class="hidden-column"><span style="color: #6c757d;">${item.senderCashier?.name || 'غير محدد'}</span></td>
+                            <td class="hidden-column"><span style="color: #6c757d;">${item.receiverCashier?.name || 'غير محدد'}</span></td>
+                            <td class="hidden-column">${formatDate(item.createdAt)}</td>
+                            <td class="hidden-column">${item.paidAt ? formatDate(item.paidAt) : '-'}</td>
+                            <td><span class="badge-status ${item.status === 'Payment pending' ? 'badge-pending' : item.status === 'Paid' ? 'badge-paid' : 'badge-pending-approval'}">${mapStatusToArabic(item.status)}</span></td>
+                            <td>
+                                <span class="badge" style="background: #007bff; color: white; padding: 2px 6px; border-radius: 4px; font-size: 11px;">حوالة</span>
+                                <button class="btn btn-sm" style="background: #17a2b8; color: white;" onclick="showFullDetails('${item.reference}')" title="عرض التفاصيل الكاملة">
+                                    <i class="fas fa-list-alt"></i>
+                                </button>
+                                <button class="btn btn-sm btn-primary" onclick="editRemittance(${item.id})" title="تعديل">
+                                    <i class="fas fa-edit"></i>
+                                </button>
+                                ${item.status === 'Payment pending' ? `<button class="btn btn-sm btn-success" onclick="withdrawRemittance('${item.reference}')" title="سحب"><i class="fas fa-money-bill"></i></button>` : ''}
+                                ${item.status === 'Paid' ? `<button class="btn btn-sm btn-warning" onclick="returnToPending('${item.reference}')" title="إرجاع للحالة السابقة"><i class="fas fa-undo"></i></button>` : ''}
+                                <button class="btn btn-sm btn-danger" onclick="deleteRemittance(${item.id}, '${item.reference}')" title="حذف">
+                                    <i class="fas fa-trash"></i>
+                                </button>
+                            </td>
+                        </tr>
+                    `).join('');
+                } else {
+                    // عرض عمليات تصريف العملات في الجدول الجديد
+                    const exchangesTbody = document.getElementById('exchangesResults');
+                    exchangesTbody.innerHTML = results.map(item => {
+                        const typeText = item.type === 1 ? 'شراء عملة' : 'بيع عملة';
+                        const typeColor = item.type === 1 ? '#28a745' : '#dc3545';
+                        return `
+                            <tr>
+                                <td><span class="pill">${item.reference}</span></td>
+                                <td><strong>${item.customerName || 'غير محدد'}</strong></td>
+                                <td class="muted">${item.customerNationalId || 'N/A'}</td>
+                                <td><strong>${item.currency}</strong></td>
+                                <td><strong class="amount">${item.jodAmount.toFixed(2)} د.أ</strong></td>
+                                <td><span class="fee">${item.foreignAmount.toFixed(2)} ${item.currency}</span></td>
+                                <td>${item.exchangeRate.toFixed(5)}</td>
+                                <td><span class="badge-status" style="color: ${typeColor}; font-weight: bold;">${typeText}</span></td>
+                                <td>${formatDate(item.createdAt)}</td>
+                                <td>
+                                    <span class="badge" style="background: #6f42c1; color: white; padding: 2px 6px; border-radius: 4px; font-size: 11px;">تبديل عملة</span>
+                                    <button class="btn btn-sm" style="background: #17a2b8; color: white;" onclick="showExchangeDetails(${item.id})" title="عرض التفاصيل">
+                                        <i class="fas fa-list-alt"></i>
+                                    </button>
+                                    <button class="btn btn-sm btn-danger" onclick="deleteExchange(${item.id}, '${item.reference}')" title="حذف">
+                                        <i class="fas fa-trash"></i>
+                                    </button>
+                                </td>
+                            </tr>
+                        `;
+                    }).join('');
+                }
+
+                if (results.length === 1) {
+                    if (currentDataType === 'remittances') {
+                        showDetails(results[0].reference);
+                    } else {
+                        showExchangeDetails(results[0].id);
+                    }
+            } else {
+                    const dc = document.getElementById('detailsCard'); 
+                    if (dc) dc.style.display = 'none';
+                }
+                
             } catch (error) {
                 console.error('خطأ في البحث:', error);
-                document.getElementById('results').innerHTML = `<tr><td colspan="7" class="empty">خطأ في الاتصال بالخادم</td></tr>`;
+                document.getElementById('results').innerHTML = `<tr><td colspan="13" class="empty">خطأ في الاتصال بالخادم</td></tr>`;
                 return;
-            }
-
-            // حساب المجموع الكلي
-            const totalAmount = list.reduce((sum, r) => sum + r.amount, 0);
-            document.getElementById('totalSum').textContent = totalAmount.toFixed(2);
-
-            const tbody = document.getElementById('results');
-            tbody.innerHTML = list.map(r => `
-                <tr>
-                    <td><span class="pill">${r.reference}</span></td>
-                    <td><strong>${r.sender?.nameAr ?? 'غير محدد'}</strong></td>
-                    <td class="muted">${r.sender?.nameEn ?? 'N/A'}</td>
-                    <td><strong>${r.beneficiary?.nameAr ?? 'غير محدد'}</strong></td>
-                    <td class="muted">${r.beneficiary?.nameEn ?? 'N/A'}</td>
-                    <td class="hidden-column">${getCountryLabel(r.country || r.Country) || (r.country || r.Country || '')}</td>
-                    <td class="hidden-column"><strong class="amount">${r.amount.toFixed(2)} د.أ</strong></td>
-                    <td class="hidden-column"><span class="fee">${r.fee.toFixed(2)} د.أ</span></td>
-                    <td class="hidden-column"><span style="color: #6c757d;">${r.senderCashier?.name || 'غير محدد'}</span></td>
-                    <td class="hidden-column"><span style="color: #6c757d;">${r.receiverCashier?.name || 'غير محدد'}</span></td>
-                    <td class="hidden-column">${formatDate(r.createdAt)}</td>
-                    <td class="hidden-column">${r.paidAt ? formatDate(r.paidAt) : '-'}</td>
-                    <td><span class="badge-status ${r.status === 'Payment pending' ? 'badge-pending' : r.status === 'Paid' ? 'badge-paid' : 'badge-pending-approval'}">${mapStatusToArabic(r.status)}</span></td>
-                    <td>
-                        <button class="btn btn-sm" style="background: #17a2b8; color: white;" onclick="showFullDetails('${r.reference}')" title="عرض التفاصيل الكاملة">
-                            <i class="fas fa-list-alt"></i>
-                        </button>
-                        <button class="btn btn-sm btn-primary" onclick="editRemittance(${r.id})" title="تعديل">
-                            <i class="fas fa-edit"></i>
-                        </button>
-                        ${r.status === 'Payment pending' ? `<button class="btn btn-sm btn-success" onclick="withdrawRemittance('${r.reference}')" title="سحب"><i class="fas fa-money-bill"></i></button>` : ''}
-                        ${r.status === 'Paid' ? `<button class="btn btn-sm btn-warning" onclick="returnToPending('${r.reference}')" title="إرجاع للحالة السابقة"><i class="fas fa-undo"></i></button>` : ''}
-                        <button class="btn btn-sm btn-danger" onclick="deleteRemittance(${r.id}, '${r.reference}')" title="حذف">
-                            <i class="fas fa-trash"></i>
-                        </button>
-                    </td>
-                </tr>
-            `).join('');
-
-            if (list.length === 1) {
-                showDetails(list[0].reference);
-            } else {
-                const dc = document.getElementById('detailsCard'); if (dc) dc.style.display = 'none';
             }
         }
 
@@ -361,6 +553,8 @@
                     <div><strong>المستفيد:</strong> ${r.beneficiary?.nameAr ?? ''} (${r.beneficiary?.nameEn ?? ''})</div>
                     <div><strong>المبلغ:</strong> <b>${r.amount.toFixed(2)}</b> د.أ</div>
                     <div><strong>العمولة:</strong> ${r.fee.toFixed(2)} د.أ</div>
+                    <div><strong>السبب:</strong> ${r.reason || 'غير محدد'}</div>
+                    <div><strong>الغاية:</strong> ${r.purpose || 'غير محدد'}</div>
                     <div><strong>تاريخ الإرسال:</strong> ${formatDate(r.createdAt)}</div>
                     ${r.paidAt ? `<div><strong>تاريخ السحب:</strong> ${formatDate(r.paidAt)}</div>` : ''}
                     ${r.releasedNote ? `<div style="grid-column: 1 / -1; background:#fff; border:2px solid #28a745; border-radius:8px; padding:10px; margin-top:6px;">
@@ -685,6 +879,20 @@
                             </div>
 
                             <div class="detail-section">
+                                <h3><i class="fas fa-info-circle"></i> تفاصيل الحوالة</h3>
+                                <div class="detail-row">
+                                    <div class="detail-item">
+                                        <span class="detail-label">السبب</span>
+                                        <span class="detail-value">${remittance.reason || 'غير محدد'}</span>
+                                    </div>
+                                    <div class="detail-item">
+                                        <span class="detail-label">الغاية</span>
+                                        <span class="detail-value">${remittance.purpose || 'غير محدد'}</span>
+                                    </div>
+                                </div>
+                            </div>
+
+                            <div class="detail-section">
                                 <h3><i class="fas fa-cash-register"></i> معلومات الصناديق</h3>
                                 <div class="detail-row">
                                     <div class="detail-item">
@@ -730,8 +938,12 @@
         // إغلاق الـ modal عند النقر خارجه
         window.onclick = function(event) {
             const modal = document.getElementById('fullDetailsModal');
+            const exchangeModal = document.getElementById('exchangeDetailsModal');
             if (event.target === modal) {
                 closeFullDetails();
+            }
+            if (event.target === exchangeModal) {
+                closeExchangeDetails();
             }
         }
 
@@ -912,27 +1124,323 @@
             }
         }
 
+        // عرض تفاصيل عملية البيع والشراء
+        async function showExchangeDetails(exchangeId) {
+            // إظهار حالة تحميل بسيطة
+            const container = document.getElementById('exchangeDetailsModal');
+            container.innerHTML = `
+                <div class="full-details-content">
+                    <div class="full-details-header">
+                        <h2><i class="fas fa-exchange-alt"></i> تفاصيل عملية تصريف العملة</h2>
+                        <button class="full-details-close" onclick="closeExchangeDetails()">&times;</button>
+                    </div>
+                    <div class="full-details-body" style="text-align:center;color:#6c757d;">
+                        <i class="fas fa-spinner fa-spin"></i> جاري جلب التفاصيل...
+                    </div>
+                </div>`;
+            container.style.display = 'block';
+
+            try {
+                // البحث في القائمة الحالية أولاً
+                let exchange = currentList.find(e => e.id === exchangeId);
+                
+                if (!exchange) {
+                    // إذا لم توجد في القائمة الحالية، جلب من API
+                    const res = await fetch(`${API_BASE_URL}/currency-exchanges`);
+                    if (!res.ok) {
+                        container.innerHTML = '';
+                        container.style.display = 'none';
+                        alert('تعذر جلب تفاصيل العملية');
+                        return;
+                    }
+                    const exchanges = await res.json();
+                    exchange = exchanges.find(e => e.id === exchangeId);
+                }
+                
+                if (!exchange) {
+                    container.innerHTML = '';
+                    container.style.display = 'none';
+                    alert('العملية غير موجودة');
+                    return;
+                }
+                
+                console.log('🔍 بيانات العملية في showExchangeDetails:', exchange);
+                console.log('🔍 بيانات الصندوق في العملية:', exchange.cashier);
+                console.log('🔍 اسم الصندوق:', exchange.cashier?.name);
+                console.log('🔍 معرف الصندوق:', exchange.cashier?.id);
+                console.log('🔍 اسم الموظف للعرض:', exchange.cashier?.name || 'غير محدد');
+                
+                const typeText = exchange.type === 1 ? 'شراء عملة' : 'بيع عملة';
+                const typeColor = exchange.type === 1 ? '#28a745' : '#dc3545';
+                const typeIcon = exchange.type === 1 ? 'fas fa-shopping-cart' : 'fas fa-money-bill-wave';
+                
+                const modalContent = `
+                    <div class="full-details-content">
+                        <div class="full-details-header">
+                            <h2>
+                                <i class="fas fa-exchange-alt"></i>
+                                تفاصيل عملية تصريف العملة
+                            </h2>
+                            <button class="full-details-close" onclick="closeExchangeDetails()">&times;</button>
+                    </div>
+                        <div class="full-details-body">
+                            <div class="detail-section">
+                                <h3><i class="fas fa-info-circle"></i> المعلومات الأساسية</h3>
+                                <div class="detail-row">
+                                    <div class="detail-item">
+                                        <span class="detail-label">الرقم المرجعي</span>
+                                        <span class="detail-value large highlight">${exchange.reference}</span>
+                        </div>
+                                    <div class="detail-item">
+                                        <span class="detail-label">نوع العملية</span>
+                                        <span style="color: ${typeColor}; font-weight: bold; display: inline-flex; align-items: center; gap: 4px;">
+                                            <i class="${typeIcon}"></i> ${typeText}
+                                        </span>
+                    </div>
+                        </div>
+                                <div class="detail-row">
+                                    <div class="detail-item">
+                                        <span class="detail-label">الدولة</span>
+                                        <span class="detail-value">${getCountryLabel(exchange.country) || exchange.country || 'غير محدد'}</span>
+                                    </div>
+                                    <div class="detail-item">
+                                        <span class="detail-label">تاريخ العملية</span>
+                                        <span class="detail-value">${formatDate(exchange.createdAt)}</span>
+                                    </div>
+                                </div>
+                            </div>
+                    
+                            <div class="detail-section">
+                                <h3><i class="fas fa-user"></i> معلومات العميل</h3>
+                                <div class="detail-row">
+                                    <div class="detail-item">
+                                        <span class="detail-label">اسم العميل</span>
+                                        <span class="detail-value">${exchange.customerName || 'غير محدد'}</span>
+                        </div>
+                                    <div class="detail-item">
+                                        <span class="detail-label">الرقم الوطني</span>
+                                        <span class="detail-value">${exchange.customerNationalId || 'غير محدد'}</span>
+                    </div>
+                        </div>
+                                <div class="detail-row">
+                                    <div class="detail-item">
+                                        <span class="detail-label">اسم الموظف</span>
+                                        <span class="detail-value">${exchange.cashier?.name || 'غير محدد'}</span>
+                                    </div>
+                                </div>
+                            </div>
+                    
+                            <div class="detail-section">
+                                <h3><i class="fas fa-dollar-sign"></i> التفاصيل المالية</h3>
+                                <div class="detail-row">
+                                    <div class="detail-item">
+                                        <span class="detail-label">العملة</span>
+                                        <span class="detail-value">${exchange.currency}</span>
+                                    </div>
+                                    <div class="detail-item">
+                                        <span class="detail-label">سعر الصرف</span>
+                                        <span class="detail-value">${exchange.exchangeRate.toFixed(5)}</span>
+                                    </div>
+                                </div>
+                                <div class="detail-row">
+                                    <div class="detail-item">
+                                        <span class="detail-label">المبلغ بالدينار الأردني</span>
+                                        <span class="detail-value large">${exchange.jodAmount.toFixed(2)} د.أ</span>
+                                    </div>
+                                    <div class="detail-item">
+                                        <span class="detail-label">المبلغ بالعملة الأجنبية</span>
+                                        <span class="detail-value large">${exchange.foreignAmount.toFixed(2)} ${exchange.currency}</span>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                `;
+
+                container.innerHTML = modalContent;
+            } catch (error) {
+                container.innerHTML = '';
+                container.style.display = 'none';
+                alert('حدث خطأ أثناء جلب التفاصيل');
+            }
+        }
+        
+        function closeExchangeDetails() {
+            document.getElementById('exchangeDetailsModal').style.display = 'none';
+        }
+        
+        // طباعة إيصال عملية البيع والشراء
+        async function printExchangeReceipt(exchangeId) {
+            try {
+                const res = await fetch(`${API_BASE_URL}/currency-exchanges`);
+                if (!res.ok) {
+                    alert('تعذر جلب تفاصيل العملية');
+                    return;
+                }
+                const exchanges = await res.json();
+                const exchange = exchanges.find(e => e.id === exchangeId);
+                
+                if (!exchange) {
+                    alert('العملية غير موجودة');
+                    return;
+                }
+                
+                const logoSrc = 'images/alawneh.png';
+                const receiptDate = new Date().toLocaleDateString('ar-SA', { 
+                    year: 'numeric', 
+                    month: 'long', 
+                    day: 'numeric', 
+                    hour: '2-digit', 
+                    minute: '2-digit',
+                    calendar: 'gregory'
+                });
+                
+                const typeText = exchange.type === 1 ? 'شراء عملة' : 'بيع عملة';
+                const typeIcon = exchange.type === 1 ? 'fas fa-shopping-cart' : 'fas fa-money-bill-wave';
+                
+                const receiptContent = `
+                    <div style="font-family: 'Arial', sans-serif; direction: rtl; text-align: right; padding: 15px; border: 2px solid #6f42c1; width: 90mm; margin: 0 auto; background: #ffffff;">
+                        <div style="text-align: center; margin-bottom: 12px;">
+                            <img src="${logoSrc}" alt="Alawneh Logo" style="width: 120px; height: auto; display: block; margin: 0 auto;">
+                            <h2 style="color: #6f42c1; margin-top: 8px; font-size: 18px; font-weight: bold;">شركة العلاونة للصرافة</h2>
+                            <p style="font-size: 14px; color: #6f42c1; font-weight: bold; margin: 5px 0;">إيصال ${typeText}</p>
+                        </div>
+                        
+                        <div style="background: #ffffff; padding: 8px; border-radius: 6px; margin-bottom: 10px; border: 1px solid #dee2e6;">
+                            <div style="margin-bottom: 6px; font-size: 12px;">
+                                <strong style="color: #6c757d; font-size: 13px;">التاريخ:</strong> 
+                                <span style="font-size: 13px; color: #6c757d; font-weight: bold;">${receiptDate}</span>
+                            </div>
+                            <div style="margin-bottom: 6px; font-size: 12px;">
+                                <strong style="color: #6c757d; font-size: 13px;">رقم العملية:</strong> 
+                                <span style="font-size: 13px; color: #6c757d; font-weight: bold;">#${exchange.id}</span>
+                            </div>
+                            <div style="margin-bottom: 6px; font-size: 12px;">
+                                <strong style="color: #6c757d; font-size: 13px;">الرقم المرجعي:</strong> 
+                                <span style="font-size: 13px; color: #6c757d; font-weight: bold;">${exchange.reference}</span>
+                            </div>
+                            <div style="font-size: 12px;">
+                                <strong style="color: #6c757d; font-size: 13px;">نوع العملية:</strong> 
+                                <span style="font-size: 13px; color: #6c757d; font-weight: bold;">${typeText}</span>
+                            </div>
+                        </div>
+                        
+                        <hr style="border: none; border-top: 2px solid #6f42c1; margin: 10px 0;">
+                        
+                        <div style="background: #ffffff; padding: 8px; border-radius: 6px; margin-bottom: 10px; border: 1px solid #dee2e6;">
+                            <div style="margin-bottom: 6px; font-size: 12px;">
+                                <strong style="color: #6c757d; font-size: 13px;">اسم العميل:</strong> 
+                                <div style="font-size: 13px; color: #6c757d; font-weight: bold; margin-top: 3px;">
+                                    ${exchange.customerName || 'غير محدد'}
+                                </div>
+                            </div>
+                            <div style="margin-bottom: 6px; font-size: 12px;">
+                                <strong style="color: #6c757d; font-size: 13px;">الرقم الوطني:</strong> 
+                                <span style="font-size: 13px; color: #6c757d; font-weight: bold;">${exchange.customerNationalId || 'غير محدد'}</span>
+                            </div>
+                            <div style="margin-bottom: 6px; font-size: 12px;">
+                                <strong style="color: #6c757d; font-size: 13px;">اسم الموظف:</strong> 
+                                <span style="font-size: 13px; color: #6c757d; font-weight: bold;">${exchange.cashier?.name || 'غير محدد'}</span>
+                            </div>
+                            <div style="font-size: 12px;">
+                                <strong style="color: #6c757d; font-size: 13px;">تاريخ العملية:</strong> 
+                                <span style="font-size: 13px; color: #6c757d; font-weight: bold;">${formatDate(exchange.createdAt)}</span>
+                            </div>
+                        </div>
+                        
+                        <hr style="border: none; border-top: 2px solid #6f42c1; margin: 10px 0;">
+                        
+                        <div style="background: #ffffff; padding: 8px; border-radius: 6px; margin-bottom: 10px; border: 1px solid #dee2e6;">
+                            <div style="margin-bottom: 6px; font-size: 12px;">
+                                <strong style="color: #6c757d; font-size: 13px;">العملة:</strong> 
+                                <span style="font-size: 14px; color: #6c757d; font-weight: bold;">${exchange.currency}</span>
+                            </div>
+                            <div style="margin-bottom: 6px; font-size: 12px;">
+                                <strong style="color: #6c757d; font-size: 13px;">سعر الصرف:</strong> 
+                                <span style="font-size: 14px; color: #6c757d; font-weight: bold;">${exchange.exchangeRate.toFixed(5)}</span>
+                            </div>
+                            <div style="margin-bottom: 6px; font-size: 12px;">
+                                <strong style="color: #6c757d; font-size: 13px;">المبلغ بالدينار:</strong> 
+                                <span style="font-size: 14px; color: #6c757d; font-weight: bold;">${exchange.jodAmount.toFixed(2)} د.أ</span>
+                            </div>
+                            <div style="margin-bottom: 6px; font-size: 12px;">
+                                <strong style="color: #6c757d; font-size: 13px;">المبلغ بالعملة:</strong> 
+                                <span style="font-size: 14px; color: #6c757d; font-weight: bold;">${exchange.foreignAmount.toFixed(2)} ${exchange.currency}</span>
+                            </div>
+                            <div style="font-size: 14px; background: #6c757d; color: white; padding: 8px; border-radius: 6px; text-align: center;">
+                                <strong style="font-size: 16px;">الربح: ${exchange.profit.toFixed(2)} د.أ</strong>
+                            </div>
+                        </div>
+                        
+                        <div style="text-align: center; margin-top: 12px; font-size: 12px; color: #6c757d; font-weight: bold; background: #ffffff; padding: 8px; border-radius: 6px; border: 1px solid #dee2e6;">
+                            شكراً لاختياركم شركة العلاونة للصرافة
+                        </div>
+                    </div>
+                `;
+
+                const printWindow = window.open('', '_blank');
+                printWindow.document.write(receiptContent);
+                printWindow.document.close();
+                printWindow.print();
+            } catch (error) {
+                console.error('خطأ في طباعة الإيصال:', error);
+                alert('حدث خطأ أثناء طباعة الإيصال');
+            }
+        }
+        
+        // حذف عملية بيع وشراء
+        async function deleteExchange(exchangeId, reference) {
+            if (!confirm(`هل أنت متأكد من حذف العملية رقم "${reference}"؟\n\nتحذير: سيتم إرجاع الرصيد للصندوق.`)) {
+                return;
+            }
+
+            try {
+                const response = await fetch(`${API_BASE_URL}/currency-exchanges/${exchangeId}`, {
+                    method: 'DELETE'
+                });
+
+                if (!response.ok) {
+                    const errorData = await response.json();
+                    throw new Error(errorData.message || 'فشل في حذف العملية');
+                }
+
+                alert('تم حذف العملية بنجاح!');
+                searchRemittances(); // تحديث القائمة
+            } catch (error) {
+                alert(`خطأ: ${error.message}`);
+                console.error('Error deleting exchange:', error);
+            }
+        }
+
         // مسح فلتر التواريخ
         function clearDateFilters() {
             document.getElementById('fromDate').value = '';
             document.getElementById('toDate').value = '';
-            // إذا كان هناك نص بحث، نعيد البحث بدون التواريخ
-            const q = document.getElementById('query').value.trim();
-            if (q) {
-                searchRemittances();
+            
+            // مسح البيانات القديمة من الجدول المناسب
+            if (currentDataType === 'remittances') {
+                document.getElementById('remittancesResults').innerHTML = `<tr><td colspan="13" class="empty">ابدأ البحث بالاسم أو الرقم الوطني أو الرقم المرجعي أو حدد فترة زمنية</td></tr>`;
             } else {
-                // إعادة تعيين النتائج
-                document.getElementById('results').innerHTML = `<tr><td colspan="14" class="empty">ابدأ البحث بالاسم أو الرقم الوطني أو الرقم المرجعي أو حدد فترة زمنية</td></tr>`;
-                document.getElementById('totalSum').textContent = '0.00';
-                const dc = document.getElementById('detailsCard'); if (dc) dc.style.display = 'none';
+                document.getElementById('exchangesResults').innerHTML = `<tr><td colspan="10" class="empty">ابدأ البحث بالاسم أو الرقم الوطني أو الرقم المرجعي أو حدد فترة زمنية</td></tr>`;
             }
+            document.getElementById('totalSum').textContent = '0.00';
+            const dc = document.getElementById('detailsCard'); 
+            if (dc) dc.style.display = 'none';
         }
 
         document.addEventListener('DOMContentLoaded', () => {
             const input = document.getElementById('query');
             const btn = document.getElementById('searchBtn');
-            document.getElementById('results').innerHTML = `<tr><td colspan="14" class="empty">ابدأ البحث بالاسم أو الرقم الوطني أو الرقم المرجعي أو حدد فترة زمنية</td></tr>`;
+            
+            // تهيئة الجداول
+            document.getElementById('remittancesResults').innerHTML = `<tr><td colspan="13" class="empty">ابدأ البحث بالاسم أو الرقم الوطني أو الرقم المرجعي أو حدد فترة زمنية</td></tr>`;
+            document.getElementById('exchangesResults').innerHTML = `<tr><td colspan="10" class="empty">ابدأ البحث بالاسم أو الرقم الوطني أو الرقم المرجعي أو حدد فترة زمنية</td></tr>`;
             document.getElementById('totalSum').textContent = '0.00';
+            
+            // تهيئة مفتاح التبديل
+            updateSearchPlaceholder();
+            updateTotalSumTitle();
+            
             if (btn) btn.addEventListener('click', searchRemittances);
             if (input) input.addEventListener('keyup', (e) => { if (e.key === 'Enter') searchRemittances(); });
         });
@@ -951,7 +1459,21 @@
                     <span>العودة للصفحة الرئيسية</span>
                 </a>
             </div>
-            <p class="subtitle">ابحث بالرقم الوطني أو الاسم العربي أو الاسم الإنجليزي أو الرقم المرجعي أو حدد فترة زمنية</p>
+            <p class="subtitle">ابحث في الحوالات وعمليات البيع والشراء بالرقم الوطني أو الاسم أو الرقم المرجعي أو حدد فترة زمنية</p>
+            
+            <!-- مفتاح التبديل -->
+            <div style="display: flex; justify-content: center; margin-top: 20px;">
+                <div class="data-toggle-switch">
+                    <button id="remittancesToggle" class="toggle-btn active" onclick="switchDataType('remittances')">
+                        <i class="fas fa-money-bill-wave"></i>
+                        <span>الحوالات</span>
+                    </button>
+                    <button id="exchangesToggle" class="toggle-btn" onclick="switchDataType('exchanges')">
+                        <i class="fas fa-exchange-alt"></i>
+                        <span>تصريف العملات</span>
+                    </button>
+                </div>
+            </div>
         </header>
 
         <main class="main-content">
@@ -975,32 +1497,53 @@
                     
                     <button id="searchBtn" class="btn btn-primary" style="margin-top:10px"><i class="fas fa-search"></i> بحث</button>
                 </div>
-                <table class="table">
+                <!-- جدول الحوالات -->
+                <table id="remittancesTable" class="table">
                     <thead>
                         <tr>
                             <th>المرجع</th>
-                            <th>المرسل (عربي)</th>
-                            <th>المرسل (English)</th>
-                            <th>المستفيد (عربي)</th>
-                            <th>المستفيد (English)</th>
+                            <th>المرسل</th>
+                            <th>الرقم الوطني</th>
+                            <th>المستفيد</th>
                             <th class="hidden-column">الدولة</th>
                             <th class="hidden-column">المبلغ</th>
                             <th class="hidden-column">العمولة</th>
                             <th class="hidden-column">الصندوق المرسل</th>
                             <th class="hidden-column">الصندوق المستقبل</th>
-                            <th class="hidden-column">تاريخ الإرسال</th>
+                            <th class="hidden-column">تاريخ العملية</th>
                             <th class="hidden-column">تاريخ السحب</th>
                             <th>الحالة</th>
                             <th>الإجراءات</th>
                         </tr>
                     </thead>
-                    <tbody id="results"></tbody>
+                    <tbody id="remittancesResults"></tbody>
+                </table>
+                
+                <!-- جدول تصريف العملات -->
+                <table id="exchangesTable" class="table" style="display: none;">
+                    <thead>
+                        <tr>
+                            <th>المرجع</th>
+                            <th>العميل</th>
+                            <th>الرقم الوطني</th>
+                            <th>العملة</th>
+                            <th>المبلغ بالدينار</th>
+                            <th>المبلغ بالعملة</th>
+                            <th>سعر الصرف</th>
+                            <th>نوع العملية</th>
+                            <th>تاريخ العملية</th>
+                            <th>الإجراءات</th>
+                        </tr>
+                    </thead>
+                    <tbody id="exchangesResults"></tbody>
                 </table>
                 <div class="total-sum">
-                    <h3>المجموع الكلي للحوالات</h3>
+                    <h3 id="totalSumTitle">المجموع الكلي للحوالات</h3>
                     <div class="sum"><span id="totalSum">0.00</span> د.أ</div>
                 </div>
-                <div id="detailsCard" class="details-card" style="display:none;"></div>
+                
+                <!-- تفاصيل العملية -->
+                <div id="detailsCard" class="details-card" style="display:none; background: #f8f9fa; border: 1px solid #dee2e6; border-radius: 8px; margin: 20px 0; padding: 20px; box-shadow: 0 2px 4px rgba(0,0,0,0.1);"></div>
             </div>
         </main>
 
@@ -1011,6 +1554,9 @@
     
     <!-- Modal التفاصيل الكاملة -->
     <div id="fullDetailsModal" class="full-details-modal"></div>
+    
+    <!-- Modal تفاصيل تصريف العملات -->
+    <div id="exchangeDetailsModal" class="full-details-modal"></div>
     
     <script src="js/app.js"></script>
 </body>

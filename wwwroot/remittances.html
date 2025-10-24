@@ -286,8 +286,8 @@
                 const fee = Number(feeData.fee || 0);
                 if (feeEl) feeEl.textContent = fee.toFixed(2);
 
-                // احضر سعر الصرف للدولة (اختياري للعرض)
-                const rateRes = await fetch(`${API_BASE_URL}/exchange-rates/${encodeURIComponent(country)}`);
+                // احضر سعر الصرف للدولة (اختياري للعرض) - للحوالات فقط
+                const rateRes = await fetch(`${API_BASE_URL}/exchange-rates/${encodeURIComponent(country)}?scope=1`);
                 let rate = null;
                 let currency = '';
                 if (rateRes.ok) {
@@ -301,7 +301,7 @@
                 const total = amount + fee;
                 if (totalEl) totalEl.textContent = total.toFixed(2);
 
-                // مبلغ الحوالة بالعملة الأجنبية = amount / rate (إذا كان السعر > 0)
+                // مبلغ الحوالة بالعملة = amount / rate (إذا كان السعر > 0)
                 if (rate && rate > 0) {
                     const converted = amount / rate;
                     if (convEl) convEl.textContent = converted.toFixed(2);
@@ -632,7 +632,7 @@
                 
                 // احصل على سعر الصرف والعملة
                 try {
-                    const rateRes = await fetch(`${API_BASE_URL}/exchange-rates/${encodeURIComponent(r.country)}`);
+                    const rateRes = await fetch(`${API_BASE_URL}/exchange-rates/${encodeURIComponent(r.country)}?scope=1`);
                     if (rateRes.ok) {
                         const rateJson = await rateRes.json();
                         const rate = Number(rateJson.rate || 0);
@@ -687,7 +687,7 @@
             let currency = '';
             let convertedAmount = '—';
             try {
-                const rateRes = await fetch(`${API_BASE_URL}/exchange-rates/${encodeURIComponent(remittance.country)}`);
+                const rateRes = await fetch(`${API_BASE_URL}/exchange-rates/${encodeURIComponent(remittance.country)}?scope=1`);
                 if (rateRes.ok) {
                     const rateJson = await rateRes.json();
                     const rate = Number(rateJson.rate || 0);

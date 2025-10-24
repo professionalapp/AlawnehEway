@@ -3,6 +3,12 @@ using Microsoft.EntityFrameworkCore;
 
 namespace AlawnehEway.Models
 {
+    public enum ExchangeRateScope
+    {
+        Remittance = 1, // أسعار خاصة بالحوالات
+        FxCounter = 2   // أسعار خاصة بتبديل العملات في الكاونتر
+    }
+
     public class ExchangeRate
     {
         public int Id { get; set; }
@@ -24,6 +30,9 @@ namespace AlawnehEway.Models
 
         [MaxLength(500)]
         public string? Notes { get; set; }
+
+        // نطاق/نوع سعر الصرف: حوالات أو تبديل عملات
+        public ExchangeRateScope Scope { get; set; } = ExchangeRateScope.Remittance;
     }
 }
 

@@ -87,7 +87,7 @@
             let convertedAmount = '';
             
             try {
-                const rateRes = await fetch(`${API_BASE_URL}/exchange-rates/${encodeURIComponent(countryValue)}`);
+                const rateRes = await fetch(`${API_BASE_URL}/exchange-rates/${encodeURIComponent(countryValue)}?scope=1`);
                 if (rateRes.ok) {
                     const rateJson = await rateRes.json();
                     const rate = Number(rateJson.rate || 0);

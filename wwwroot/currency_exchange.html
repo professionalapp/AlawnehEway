@@ -1,0 +1,1131 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>تبديل العملات - Alawneh Eway</title>
+    <link rel="stylesheet" href="css/style.css">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
+    <script src="js/countries.js"></script>
+    <style>
+        .exchange-card {
+            background: white;
+            border-radius: 15px;
+            padding: 25px;
+            margin-bottom: 25px;
+            box-shadow: 0 5px 20px rgba(0, 0, 0, 0.08);
+        }
+
+        .toolbar {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            gap: 10px;
+            flex-wrap: wrap;
+        }
+
+        .toolbar a {
+            color: #ffffff;
+            text-decoration: none;
+            display: inline-flex;
+            align-items: center;
+            gap: 8px;
+            transition: opacity 0.3s;
+        }
+
+        .highlight {
+            color: #007bff;
+            font-weight: 700;
+        }
+
+        .form-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(260px, 1fr));
+            gap: 15px;
+        }
+
+        .group {
+            display: flex;
+            flex-direction: column;
+        }
+
+        .group label {
+            font-size: 13px;
+            font-weight: 600;
+            color: #333;
+            margin-bottom: 6px;
+            display: inline-flex;
+            align-items: center;
+            gap: 6px;
+        }
+
+        .group input,
+        .group select {
+            padding: 10px 12px;
+            border: 2px solid #e6e6e6;
+            border-radius: 10px;
+            font-size: 14px;
+            transition: all 0.2s;
+            background: #ffffff;
+        }
+
+        .group input:focus,
+        .group select:focus {
+            border-color: #007bff;
+            box-shadow: 0 0 0 3px rgba(0, 123, 255, 0.12);
+            outline: none;
+        }
+
+        .pill {
+            display: inline-flex;
+            align-items: center;
+            gap: 8px;
+            background: #f1f5ff;
+            color: #007bff;
+            border-radius: 20px;
+            padding: 6px 12px;
+            font-weight: 600;
+            font-size: 13px;
+        }
+
+        .mode-toggle {
+            display: inline-flex;
+            background: #f8f9fa;
+            border: 1px solid #e6e6e6;
+            border-radius: 10px;
+            overflow: hidden;
+        }
+
+        .mode-toggle button {
+            border: none;
+            background: transparent;
+            padding: 10px 14px;
+            cursor: pointer;
+            font-weight: 600;
+            color: #6c757d;
+        }
+
+        .mode-toggle button.active {
+            background: #007bff;
+            color: #ffffff;
+        }
+
+
+        .muted {
+            color: #6c757d;
+            font-size: 13px;
+        }
+
+        .hint {
+            font-size: 12px;
+            color: #6c757d;
+            margin-top: 6px;
+        }
+        /* نتائج بحث المستخدم مثل صفحة الحوالة */
+        .results { max-height: 200px; overflow: auto; border: 1px solid #ddd; border-radius: 6px; background: #fff; display: none; }
+        .results div { padding: 8px 10px; cursor: pointer; color: #6c757d; }
+        .results div:hover { background: #f0f0f0; }
+
+        .selected-user { margin-top: 12px; padding: 8px 0; display: none; align-items: center; gap: 10px; }
+        .selected-user.show { display: flex; }
+        .selected-user i.check-icon { color: #28a745; font-size: 18px; }
+        .selected-user .user-info { flex: 1; }
+        .selected-user .user-name { color: #495057; font-weight: 600; font-size: 16px; display: block; margin-bottom: 4px; }
+        .selected-user .user-id { color: #6c757d; font-size: 13px; display: block; }
+        .selected-user .clear-btn { background: transparent; border: 1px solid #dc3545; color: #dc3545; cursor: pointer; font-size: 14px; padding: 6px 12px; border-radius: 6px; transition: all 0.3s; display: flex; align-items: center; gap: 6px; font-weight: 500; }
+        .selected-user .clear-btn:hover { background: #dc3545; color: white; transform: translateY(-1px); box-shadow: 0 2px 8px rgba(220, 53, 69, 0.3); }
+        /* Modal styles */
+        .modal { display: none; position: fixed; z-index: 9999; inset: 0; background: rgba(0,0,0,0.45); }
+        .modal-content { background: #ffffff; margin: 60px auto; border-radius: 12px; max-width: 720px; box-shadow: 0 20px 60px rgba(0,0,0,0.25); overflow: hidden; }
+        .modal-header { background: linear-gradient(135deg, #007bff 0%, #0056b3 100%); color: #fff; padding: 16px 20px; display:flex; align-items:center; justify-content:space-between; }
+        .modal-body { padding: 20px; }
+        .modal-footer { padding: 12px 20px; display:flex; gap:10px; justify-content:flex-end; background:#f8f9fa; }
+        .close { cursor: pointer; font-size: 24px; line-height: 1; }
+        .grid-2 { display:grid; grid-template-columns: 1fr 1fr; gap: 12px; }
+        .grid-3 { display:grid; grid-template-columns: repeat(3, 1fr); gap: 12px; }
+        .card-lite { background: #ffffff; border: 1px solid #e9ecef; border-radius: 10px; padding: 12px; }
+        .card-lite h4 { margin:0 0 8px 0; font-size: 14px; color:#6c757d; font-weight:600; }
+        .big-val { font-size: 18px; font-weight: 800; color:#007bff; }
+        .muted-sm { color:#6c757d; font-size:12px; }
+    </style>
+    <script>
+        // حماية الوصول - يتطلب تسجيل دخول
+        (function() {
+            const isLoggedIn = localStorage.getItem('isLoggedIn') || sessionStorage.getItem('isLoggedIn');
+            if (isLoggedIn !== 'true') {
+                window.location.replace('login.html');
+            }
+        })();
+    </script>
+</head>
+<body>
+    <div class="container">
+        <header class="header">
+            <div class="toolbar">
+                <div class="logo">
+                    <i class="fas fa-money-bill-wave"></i>
+                    <h1>تبديل العملات</h1>
+                </div>
+                <div style="display:flex; gap:12px; align-items:center;">
+                    
+                    <a href="index.html" title="العودة للصفحة الرئيسية">
+                        <i class="fas fa-home"></i>
+                        <span>الصفحة الرئيسية</span>
+                    </a>
+                </div>
+            </div>
+            
+        </header>
+
+        <main class="main-content">
+            <div class="exchange-card">
+                <div style="display:flex; align-items:center; justify-content:space-between; gap:10px; margin-bottom:15px; flex-wrap:wrap;">
+                    <div class="pill">
+                        <i class="fas fa-chart-line"></i>
+                        <span>سعر الصرف الحالي: <span id="rateText">—</span> <span id="currencyCode"></span></span>
+                    </div>
+                    <div class="mode-toggle" role="tablist" aria-label="mode">
+                        <button id="sellBtn" class="active" type="button" aria-selected="true">بيع عملة</button>
+                        <button id="buyBtn" type="button" aria-selected="false">شراء عملة</button>
+                    </div>
+                </div>
+
+                <div class="form-grid" style="margin-bottom:15px;">
+                    <div class="group" style="grid-column: 1 / -1;">
+                        <label for="userSearch"><i class="fas fa-user"></i> البحث عن عميل</label>
+                        <input id="userSearch" type="text" placeholder="ابحث بالاسم أو رقم المعرف...">
+                        <div id="userSelected" class="selected-user"></div>
+                        <div id="userResults" class="results"></div>
+                    </div>
+                    <div class="group">
+                        <label for="countrySelect"><i class="fas fa-globe"></i> العملة/الدولة</label>
+                        <select id="countrySelect"></select>
+                        <div class="hint">السعر محسوب مقابل الدينار الأردني (JOD)</div>
+                    </div>
+                    <div class="group">
+                        <label for="amountJOD"><i class="fas fa-coins"></i> المبلغ بالدينار الأردني (JOD)</label>
+                        <input id="amountJOD" type="number" step="0.01" min="0" placeholder="0.00">
+                    </div>
+                    <div class="group">
+                        <label for="amountFX"><i class="fas fa-money-bill"></i> المبلغ بالعملة <span class="highlight" id="fxCode">—</span></label>
+                        <input id="amountFX" type="number" step="0.01" min="0" placeholder="0.00">
+                    </div>
+                </div>
+
+                <div style="display:flex; gap:10px; justify-content:flex-end; margin-top:12px;">
+                    <button id="confirmBtn" class="btn btn-primary" style="padding:10px 16px; border:none; border-radius:8px; cursor:pointer;">
+                        <i class="fas fa-check-circle"></i>
+                        <span>تأكيد العملية وإصدار وصل</span>
+                    </button>
+                </div>
+            </div>
+
+		<!-- Confirmation Modal -->
+		<div id="confirmModal" class="modal" style="display: none;">
+			<div class="modal-content">
+				<div class="modal-header">
+					<h2 style="margin:0; font-size:18px; display:flex; align-items:center; gap:8px;"><i class="fas fa-file-invoice"></i> تأكيد العملية قبل إصدار الوصل</h2>
+					<span class="close" onclick="closeConfirmModal()">&times;</span>
+				</div>
+				<div class="modal-body">
+					<div class="grid-3" style="margin-bottom:12px;">
+						<div class="card-lite">
+							<h4>نوع العملية</h4>
+							<div class="big-val" id="c_opType">—</div>
+						</div>
+						<div class="card-lite">
+							<h4>اسم الموظف</h4>
+							<div class="big-val" id="c_employee">—</div>
+						</div>
+						<div class="card-lite">
+							<h4>العملة</h4>
+							<div class="big-val" id="c_currency">—</div>
+						</div>
+					</div>
+					<div class="grid-2">
+						<div class="card-lite">
+							<h4>سعر الصرف</h4>
+							<div class="big-val" id="c_rate">—</div>
+						</div>
+						<div class="card-lite">
+							<h4>تفاصيل المبالغ</h4>
+							<div style="display: grid; grid-template-columns: 1fr 1fr; gap: 8px; margin-top: 8px;">
+								<div style="background: #f8f9fa; border-radius: 6px; padding: 8px; text-align: center;">
+									<div style="font-size: 11px; color: #6c757d; margin-bottom: 4px;">قيمة الدينار</div>
+									<div style="font-size: 16px; font-weight: 800; color: #007bff;" id="c_jod">—</div>
+								</div>
+								<div style="background: #f8f9fa; border-radius: 6px; padding: 8px; text-align: center;">
+									<div style="font-size: 11px; color: #6c757d; margin-bottom: 4px;">قيمة العملة</div>
+									<div style="font-size: 16px; font-weight: 800; color: #28a745;" id="c_fx">—</div>
+								</div>
+							</div>
+						</div>
+					</div>
+				</div>
+				<div class="modal-footer">
+					<button class="btn btn-secondary" onclick="closeConfirmModal()"><i class="fas fa-times"></i> إلغاء</button>
+					<button class="btn btn-primary" onclick="issueReceiptAndReset()"><i class="fas fa-print"></i> تأكيد وإصدار الوصل</button>
+				</div>
+			</div>
+		</div>
+
+		</main>
+
+        <footer class="footer">
+            <p> نظام Alawneh-Eway. جميع الحقوق محفوظة. &copy; 2025</p>
+        </footer>
+    </div>
+
+    <script>
+        const API_BASE_URL = window.location.origin;
+        let rates = [];
+        let selected = null; // { country, rate, currency }
+        let currentMode = 'sell'; // 'sell' | 'buy'
+        let updating = false; // لمنع الدوران عند تحديث الحقول
+        let chosenUser = null; // { id, name, username }
+        let userSearchTimer = null;
+
+        document.addEventListener('DOMContentLoaded', async () => {
+            // اختبار الاتصال أولاً
+            await testConnection();
+            await loadRates();
+            bindUI();
+        });
+
+        // اختبار الاتصال بالAPI
+        async function testConnection() {
+            try {
+                console.log('اختبار الاتصال بالAPI...');
+                const response = await fetch(`${API_BASE_URL}/fx-exchange-rates?t=${Date.now()}`, {
+                    method: 'HEAD',
+                    cache: 'no-store'
+                });
+                
+                if (response.ok) {
+                    console.log('✅ الاتصال بالAPI يعمل بشكل صحيح');
+                } else {
+                    console.warn('⚠️ API غير متاح:', response.status, response.statusText);
+                }
+            } catch (error) {
+                console.error('❌ خطأ في الاتصال بالAPI:', error);
+                alert('خطأ في الاتصال بالخادم. تأكد من أن التطبيق يعمل بشكل صحيح.');
+            }
+        }
+
+        async function loadRates() {
+            try {
+                console.log('جاري تحميل أسعار الصرف...');
+                const res = await fetch(`${API_BASE_URL}/fx-exchange-rates?t=${Date.now()}`, { 
+                    cache: 'no-store',
+                    headers: {
+                        'Accept': 'application/json',
+                        'Content-Type': 'application/json'
+                    }
+                });
+                
+                if (!res.ok) {
+                    throw new Error(`HTTP ${res.status}: ${res.statusText}`);
+                }
+                
+                const contentType = res.headers.get('content-type');
+                if (!contentType || !contentType.includes('application/json')) {
+                    throw new Error('الاستجابة ليست بصيغة JSON صحيحة');
+                }
+                
+                rates = await res.json();
+                console.log('تم تحميل أسعار الصرف:', rates);
+                
+                if (!Array.isArray(rates)) {
+                    throw new Error('البيانات المستلمة ليست مصفوفة صحيحة');
+                }
+                
+                if (rates.length === 0) {
+                    console.warn('لا توجد أسعار صرف متاحة');
+                    alert('لا توجد أسعار صرف متاحة. يرجى إضافة أسعار صرف أولاً.');
+                    return;
+                }
+                
+                populateCountries();
+            } catch (e) {
+                console.error('خطأ في تحميل أسعار الصرف:', e);
+                alert(`خطأ في تحميل أسعار الصرف: ${e.message}`);
+            }
+        }
+
+        function getCurrencyLabel(currency) {
+            const labels = {
+                'USD': 'دولار أمريكي',
+                'EUR': 'يورو',
+                'GBP': 'جنيه إسترليني',
+                'SAR': 'ريال سعودي',
+                'AED': 'درهم إماراتي',
+                'TRY': 'ليرة تركية',
+                'EGP': 'جنيه مصري'
+            };
+            return labels[currency] || currency;
+        }
+
+        function populateCountries() {
+            const sel = document.getElementById('countrySelect');
+            sel.innerHTML = '';
+            
+            if (!rates || rates.length === 0) {
+                console.warn('لا توجد أسعار صرف متاحة لملء القائمة');
+                return;
+            }
+            
+            rates.forEach((r, index) => {
+                // التحقق من صحة البيانات
+                if (!r.currency || !r.buyRate || !r.sellRate) {
+                    console.warn(`سعر صرف غير صحيح في الفهرس ${index}:`, r);
+                    return;
+                }
+                
+                const currency = r.currency;
+                const label = getCurrencyLabel(currency);
+                
+                const opt = document.createElement('option');
+                opt.value = currency;
+                opt.textContent = `${label} (${currency})`;
+                opt.dataset.buyRate = r.buyRate;
+                opt.dataset.sellRate = r.sellRate;
+                opt.dataset.currency = currency;
+                sel.appendChild(opt);
+            });
+            
+            // اختيار أول عنصر
+            if (sel.options.length > 0) {
+                sel.selectedIndex = 0;
+                onCountryChange();
+            } else {
+                console.error('لم يتم العثور على أي أسعار صرف صحيحة');
+                alert('لم يتم العثور على أي أسعار صرف صحيحة. يرجى التحقق من البيانات.');
+            }
+            
+            sel.addEventListener('change', onCountryChange);
+        }
+
+        function onCountryChange() {
+            const sel = document.getElementById('countrySelect');
+            const opt = sel.options[sel.selectedIndex];
+            
+            if (!opt || !opt.value) {
+                console.warn('لم يتم اختيار عملة صحيحة');
+                return;
+            }
+            
+            const buyRate = Number(opt.dataset.buyRate || 0);
+            const sellRate = Number(opt.dataset.sellRate || 0);
+            const currency = opt.dataset.currency || '';
+            
+            if (buyRate <= 0 || sellRate <= 0) {
+                console.error('سعر الصرف غير صحيح:', { buyRate, sellRate });
+                alert('سعر الصرف غير صحيح. يرجى التحقق من البيانات.');
+                return;
+            }
+            
+            selected = {
+                currency: currency,
+                buyRate: buyRate,
+                sellRate: sellRate,
+                currencyCode: currency
+            };
+            
+            console.log('تم اختيار العملة:', selected);
+            
+            // تحديث عرض السعر حسب نوع العملية
+            updateRateDisplay();
+            document.getElementById('currencyCode').textContent = selected.currencyCode ? `/${selected.currencyCode}` : '';
+            document.getElementById('fxCode').textContent = selected.currencyCode || '—';
+            compute();
+        }
+
+        function updateRateDisplay() {
+            if (!selected) return;
+            
+            const rateText = document.getElementById('rateText');
+            if (currentMode === 'buy') {
+                rateText.textContent = selected.buyRate.toFixed(5);
+            } else {
+                rateText.textContent = selected.sellRate.toFixed(5);
+            }
+        }
+
+        function bindUI() {
+            const sellBtn = document.getElementById('sellBtn');
+            const buyBtn = document.getElementById('buyBtn');
+            sellBtn.addEventListener('click', () => setMode('sell'));
+            buyBtn.addEventListener('click', () => setMode('buy'));
+
+            document.getElementById('amountJOD').addEventListener('input', () => compute('JOD'));
+            document.getElementById('amountFX').addEventListener('input', () => compute('FX'));
+
+            const userSearch = document.getElementById('userSearch');
+            userSearch.addEventListener('input', onUserSearchInput);
+            document.addEventListener('click', (e) => {
+                const results = document.getElementById('userResults');
+                const searchEl = document.getElementById('userSearch');
+                if (!results || !searchEl) return;
+                if (!results.contains(e.target) && e.target !== searchEl) {
+                    results.style.display = 'none';
+                }
+            });
+
+            document.getElementById('confirmBtn').addEventListener('click', onConfirm);
+        }
+
+        function setMode(m) {
+            currentMode = m;
+            document.getElementById('sellBtn').classList.toggle('active', currentMode === 'sell');
+            document.getElementById('buyBtn').classList.toggle('active', currentMode === 'buy');
+            updateRateDisplay();
+            compute();
+        }
+
+        function compute(changed) {
+            if (!selected || !selected.buyRate || !selected.sellRate) {
+                return;
+            }
+            if (updating) return;
+            updating = true;
+
+            const rate = currentMode === 'buy' ? Number(selected.buyRate) : Number(selected.sellRate);
+            const jodEl = document.getElementById('amountJOD');
+            const fxEl = document.getElementById('amountFX');
+            let jod = Number(jodEl.value || 0);
+            let fx = Number(fxEl.value || 0);
+
+            // بالحالة الحالية نستخدم نفس السعر للبيع والشراء (سعر وسيط).
+            // ملاحظة: يمكن لاحقاً دعم سعر بيع/شراء منفصلين عند توفرهما في الـ API.
+
+            if (changed === 'JOD') {
+                // JOD -> FX
+                fx = rate > 0 ? (jod / rate) : 0;
+                fxEl.value = fx ? fx.toFixed(2) : '';
+            } else if (changed === 'FX') {
+                // FX -> JOD
+                jod = rate > 0 ? (fx * rate) : 0;
+                jodEl.value = jod ? jod.toFixed(2) : '';
+            } else {
+                // إعادة حساب عامة عند تغيير النمط/العملة
+                if (jodEl.value) {
+                    fx = rate > 0 ? (jod / rate) : 0;
+                    fxEl.value = fx ? fx.toFixed(2) : '';
+                } else if (fxEl.value) {
+                    jod = rate > 0 ? (fx * rate) : 0;
+                    jodEl.value = jod ? jod.toFixed(2) : '';
+                }
+            }
+
+            // تم حذف البطاقة الزرقاء - لا حاجة لعرض النتيجة
+
+            updating = false;
+        }
+
+        // تم حذف دالة setResult - لا حاجة لها بعد حذف البطاقة الزرقاء
+
+        function onUserSearchInput(e) {
+            const q = (e.target.value || '').trim().toLowerCase();
+            const results = document.getElementById('userResults');
+            const selectedBox = document.getElementById('userSelected');
+            if (userSearchTimer) clearTimeout(userSearchTimer);
+            if (!q || q.length < 2) { results.style.display = 'none'; results.innerHTML = ''; return; }
+            userSearchTimer = setTimeout(async () => {
+                try {
+                    const res = await fetch(`${API_BASE_URL}/parties/search?q=${encodeURIComponent(q)}`);
+                    if (!res.ok) throw new Error('HTTP error');
+                    const all = await res.json();
+                    const matches = all.slice(0, 5);
+                    if (matches.length === 0) { results.innerHTML = '<div>لا نتائج</div>'; results.style.display = 'block'; return; }
+                    results.innerHTML = matches.map(u => `
+                        <div data-id="${u.id}" data-name="${escapeHtml(u.nameAr || '')}" data-username="${escapeHtml(u.nameEn || '')}" data-nationalid="${escapeHtml(u.nationalId || '')}">
+                            ${escapeHtml(u.nameAr || u.nameEn || ('Party ' + u.id))}<br>
+                            <small>الرقم الوطني: ${escapeHtml(u.nationalId || 'غير محدد')}</small>
+                        </div>
+                    `).join('');
+                    Array.from(results.children).forEach(row => {
+                        row.addEventListener('click', () => {
+                            chosenUser = {
+                                id: Number(row.getAttribute('data-id')),
+                                name: row.getAttribute('data-name') || '',
+                                username: row.getAttribute('data-username') || '',
+                                nationalId: row.getAttribute('data-nationalid') || ''
+                            };
+                            selectedBox.innerHTML = `
+                                <i class="fas fa-check-circle check-icon"></i>
+                                <div class="user-info">
+                                    <span class="user-name">${escapeHtml(chosenUser.name || chosenUser.username)}</span>
+                                    <span class="user-id">الرقم الوطني: ${escapeHtml(chosenUser.nationalId || 'غير محدد')}</span>
+                                </div>
+                                <button class="clear-btn" onclick="clearSelectedUser(event)"><i class=\"fas fa-times\"></i> إلغاء</button>
+                            `;
+                            selectedBox.classList.add('show');
+                            document.getElementById('userSearch').value = '';
+                            results.style.display = 'none';
+                            results.innerHTML = '';
+                        });
+                    });
+                    results.style.display = 'block';
+                } catch (err) {
+                    results.innerHTML = '<div>خطأ في البحث</div>';
+                    results.style.display = 'block';
+                }
+            }, 300);
+        }
+
+        function clearSelectedUser(event) {
+            event.preventDefault();
+            event.stopPropagation();
+            chosenUser = null;
+            const box = document.getElementById('userSelected');
+            box.classList.remove('show');
+            box.innerHTML = '';
+        }
+
+        function escapeHtml(text) {
+            const div = document.createElement('div');
+            div.textContent = text;
+            return div.innerHTML;
+        }
+
+        async function saveCurrencyExchange() {
+            const jodVal = Number(document.getElementById('amountJOD').value || 0);
+            const fxVal = Number(document.getElementById('amountFX').value || 0);
+            const jodAmount = (currentMode === 'sell') ? jodVal : (fxVal * selected.buyRate);
+            const fxAmount = (currentMode === 'sell') ? (jodVal/selected.sellRate) : fxVal;
+            
+            // حساب الربح (يمكن تحسين هذا المنطق لاحقاً)
+            const profit = jodAmount * 0.05; // 5% ربح تقريبي
+            
+            console.log('DEBUG: selected object before API call:', selected);
+            console.log('DEBUG: chosenUser object before API call:', chosenUser);
+
+            // الحصول على معرف صاحب الصندوق المسجل دخوله (مثل الحوالات)
+            const currentUserId = localStorage.getItem('userId') || sessionStorage.getItem('userId');
+            
+            console.log('🔍 User ID من localStorage:', localStorage.getItem('userId'));
+            console.log('🔍 User ID من sessionStorage:', sessionStorage.getItem('userId'));
+            console.log('🔍 User ID النهائي:', currentUserId);
+
+            const exchangeData = {
+                type: currentMode === 'sell' ? 2 : 1, // 1=شراء, 2=بيع
+                currency: selected.currencyCode,
+                foreignAmount: fxAmount,
+                exchangeRate: currentMode === 'buy' ? selected.buyRate : selected.sellRate,
+                jodAmount: jodAmount,
+                profit: profit,
+                customerName: chosenUser?.name || chosenUser?.username || 'عميل',
+                customerNationalId: chosenUser?.nationalId || null, // Updated to send nationalId
+                customerPhone: null, // يمكن إضافة حقل للهاتف لاحقاً
+                cashierId: currentUserId ? parseInt(currentUserId) : null, // معرف صاحب الصندوق المسجل دخوله
+                notes: `${currentMode === 'sell' ? 'بيع' : 'شراء'} ${selected.currencyCode}`,
+                country: selected.currencyCode
+            };
+
+            console.log('إرسال بيانات العملية:', exchangeData);
+
+            const response = await fetch(`${API_BASE_URL}/currency-exchanges`, {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json'
+                },
+                body: JSON.stringify(exchangeData)
+            });
+
+            if (!response.ok) {
+                const errorText = await response.text();
+                throw new Error(`فشل في حفظ العملية: ${errorText}`);
+            }
+
+            const result = await response.json();
+            console.log('تم حفظ العملية بنجاح:', result);
+            console.log('🔍 Reference from API:', result?.reference);
+            return result;
+        }
+
+		function onConfirm() {
+            const jodVal = Number(document.getElementById('amountJOD').value || 0);
+            const fxVal = Number(document.getElementById('amountFX').value || 0);
+            if (!selected || !selected.buyRate || !selected.sellRate) { alert('يرجى اختيار العملة أولاً'); return; }
+            if (!chosenUser) { alert('يرجى اختيار المستخدم لإتمام العملية'); return; }
+            if ((currentMode === 'sell' && jodVal <= 0) || (currentMode === 'buy' && fxVal <= 0)) { alert('يرجى إدخال المبلغ الصحيح'); return; }
+
+			// Populate confirmation modal
+			const currencyLabel = getCurrencyLabel(selected.currencyCode);
+			document.getElementById('c_opType').textContent = currentMode === 'sell' ? 'بيع عملة' : 'شراء عملة';
+			document.getElementById('c_employee').textContent = (chosenUser?.name || chosenUser?.username || '-');
+			document.getElementById('c_currency').textContent = `${selected.currencyCode} (${currencyLabel})`;
+			const currentRate = currentMode === 'buy' ? selected.buyRate : selected.sellRate;
+			document.getElementById('c_rate').textContent = currentRate.toFixed(5);
+			document.getElementById('c_jod').textContent = (currentMode === 'sell' ? jodVal : (fxVal * selected.buyRate)).toFixed(2) + ' JOD';
+			document.getElementById('c_fx').textContent = (currentMode === 'sell' ? (jodVal/selected.sellRate) : fxVal).toFixed(2) + ' ' + selected.currencyCode;
+
+			openConfirmModal();
+        }
+
+		function openConfirmModal() {
+			const m = document.getElementById('confirmModal');
+			if (m) m.style.display = 'block';
+		}
+
+		function closeConfirmModal() {
+			const m = document.getElementById('confirmModal');
+			if (m) m.style.display = 'none';
+		}
+
+		async function issueReceiptAndReset() {
+			closeConfirmModal();
+			
+			// حفظ البيانات في قاعدة البيانات أولاً والحصول على الرقم المرجعي
+			let savedExchange;
+			try {
+				savedExchange = await saveCurrencyExchange();
+				console.log('🔍 savedExchange object:', savedExchange);
+				console.log('🔍 savedExchange.reference:', savedExchange?.reference);
+			} catch (error) {
+				console.error('خطأ في حفظ العملية:', error);
+				alert('حدث خطأ في حفظ العملية. يرجى المحاولة مرة أخرى.');
+				return;
+			}
+			
+			const logoSrc = 'images/alawneh.png';
+			const now = new Date();
+			// استخدام الرقم المرجعي من الاستجابة بدلاً من إنشاء رقم جديد
+			const ref = savedExchange?.reference || `CE-${now.getFullYear()}${String(now.getMonth()+1).padStart(2,'0')}${String(now.getDate()).padStart(2,'0')}-${now.getTime().toString().slice(-6)}`;
+			console.log('🔍 Final reference number:', ref);
+			
+			// الحصول على اسم الموظف من الاستجابة أو من localStorage
+			const cashierName = savedExchange?.cashier?.name || 
+							   localStorage.getItem('name') || 
+							   sessionStorage.getItem('name') || 
+							   localStorage.getItem('username') || 
+							   sessionStorage.getItem('username') || 
+							   'غير محدد';
+			console.log('🔍 Cashier name:', cashierName);
+			
+			const opText = currentMode === 'sell' ? 'بيع عملة' : 'شراء عملة';
+			const jodVal = Number(document.getElementById('amountJOD').value || 0);
+			const fxVal = Number(document.getElementById('amountFX').value || 0);
+			const jodAmount = (currentMode === 'sell') ? jodVal : (fxVal * selected.buyRate);
+			const fxAmount = (currentMode === 'sell') ? (jodVal/selected.sellRate) : fxVal;
+			const currencyLabel = getCurrencyLabel(selected.currencyCode);
+			const currentRate = currentMode === 'buy' ? selected.buyRate : selected.sellRate;
+			const arDate = now.toLocaleDateString('ar-JO', { 
+				year: 'numeric', 
+				month: 'long', 
+				day: 'numeric',
+				weekday: 'long'
+			});
+			const enDate = now.toLocaleString('en-US', { 
+				year: 'numeric', 
+				month: 'long', 
+				day: 'numeric', 
+				hour: '2-digit', 
+				minute: '2-digit',
+				second: '2-digit'
+			});
+
+			const receiptHtml = `
+				<!DOCTYPE html>
+				<html dir="rtl" lang="ar">
+				<head>
+					<meta charset="UTF-8">
+					<meta name="viewport" content="width=device-width, initial-scale=1.0">
+					<title>وصل تبديل عملة - ${ref}</title>
+					<style>
+						@page { 
+							size: A4; 
+							margin: 10mm; 
+						}
+						body { 
+							font-family: 'Arial', 'Tahoma', sans-serif; 
+							direction: rtl; 
+							margin: 0; 
+							padding: 0; 
+							background: white;
+						}
+						.receipt-container {
+							width: 100%;
+							max-width: 150mm;
+							margin: 0 auto;
+							padding: 10px;
+							background: white;
+							box-shadow: 0 0 10px rgba(0,0,0,0.1);
+						}
+						.header {
+							text-align: center;
+							margin-bottom: 20px;
+							border-bottom: 3px solid #007bff;
+							padding-bottom: 15px;
+						}
+						.logo {
+							width: 120px;
+							height: auto;
+							margin-bottom: 10px;
+						}
+						.company-name {
+							font-size: 18px;
+							font-weight: bold;
+							color: #007bff;
+							margin: 5px 0;
+						}
+						.receipt-title {
+							font-size: 16px;
+							font-weight: bold;
+							color: #333;
+							margin: 10px 0;
+						}
+						.reference-info {
+							background: #f8f9fa;
+							border: 2px solid #007bff;
+							border-radius: 8px;
+							padding: 15px;
+							margin: 15px 0;
+							text-align: center;
+						}
+						.reference-number {
+							font-size: 14px;
+							font-weight: bold;
+							color: #007bff;
+							margin-bottom: 5px;
+						}
+						.date-info {
+							font-size: 11px;
+							color: #666;
+						}
+						.details-grid {
+							display: grid;
+							grid-template-columns: 1fr;
+							gap: 8px;
+							margin: 15px 0;
+						}
+						.detail-card {
+							background: #ffffff;
+							border: 1px solid #e9ecef;
+							border-radius: 8px;
+							padding: 15px;
+							box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+						}
+						.detail-label {
+							font-size: 10px;
+							color: #6c757d;
+							margin-bottom: 5px;
+							font-weight: 600;
+						}
+						.detail-value {
+							font-size: 12px;
+							font-weight: bold;
+							color: #333;
+						}
+						.amounts-section {
+							background: linear-gradient(135deg, #f8f9fa 0%, #e9ecef 100%);
+							border: 2px solid #007bff;
+							border-radius: 12px;
+							padding: 20px;
+							margin: 20px 0;
+						}
+						.amounts-title {
+							font-size: 14px;
+							font-weight: bold;
+							color: #007bff;
+							text-align: center;
+							margin-bottom: 15px;
+						}
+						.amounts-grid {
+							display: grid;
+							grid-template-columns: 1fr 1fr;
+							gap: 15px;
+						}
+						.amount-card {
+							text-align: center;
+							padding: 15px;
+							border-radius: 8px;
+							box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+						}
+						.jod-card {
+							background: linear-gradient(135deg, #e3f2fd 0%, #bbdefb 100%);
+							border: 2px solid #2196f3;
+						}
+						.currency-card {
+							background: linear-gradient(135deg, #e8f5e8 0%, #c8e6c9 100%);
+							border: 2px solid #4caf50;
+						}
+						.amount-label {
+							font-size: 10px;
+							font-weight: 600;
+							margin-bottom: 8px;
+						}
+						.jod-label { color: #1976d2; }
+						.currency-label { color: #388e3c; }
+						.amount-value {
+							font-size: 18px;
+							font-weight: 800;
+							margin-bottom: 5px;
+						}
+						.jod-value { color: #1976d2; }
+						.currency-value { color: #388e3c; }
+						.amount-code {
+							font-size: 11px;
+							font-weight: 600;
+						}
+						.exchange-rate {
+							background: transparent;
+							border: none;
+							padding: 15px;
+							margin: 15px 0;
+							text-align: center;
+						}
+						.rate-label {
+							font-size: 11px;
+							color: #495057;
+							margin-bottom: 5px;
+							font-weight: 600;
+						}
+						.rate-value {
+							font-size: 16px;
+							font-weight: bold;
+							color: #495057;
+						}
+						.footer {
+							text-align: center;
+							margin-top: 20px;
+							padding-top: 10px;
+							border-top: 1px solid #e9ecef;
+							color: #6c757d;
+							font-size: 10px;
+						}
+						@media print {
+							body { margin: 0; }
+							.receipt-container { box-shadow: none; }
+						}
+					</style>
+				</head>
+				<body>
+					<div class="receipt-container">
+						<div class="header">
+							<img src="${logoSrc}" alt="Alawneh Logo" class="logo" onerror="this.style.display='none'">
+							<div class="company-name">شركة العلاونة للصرافة</div>
+							<div class="receipt-title">وصل ${opText}</div>
+						</div>
+						
+						<div class="reference-info">
+							<div class="reference-number">الرقم المرجعي: ${ref}</div>
+							<div class="date-info">
+								<div>التاريخ: ${arDate}</div>
+								<div>Date: ${enDate}</div>
+							</div>
+						</div>
+						
+						<div class="details-grid">
+							<div class="detail-card">
+								<div class="detail-label">اسم الموظف</div>
+								<div class="detail-value">${escapeHtml(cashierName)}</div>
+							</div>
+							<div class="detail-card">
+								<div class="detail-label">اسم العميل</div>
+								<div class="detail-value">${escapeHtml(chosenUser?.name || chosenUser?.username || '-')}</div>
+							</div>
+							<div class="detail-card">
+								<div class="detail-label">نوع العملية</div>
+								<div class="detail-value">${opText}</div>
+							</div>
+							<div class="detail-card">
+								<div class="detail-label">العملة</div>
+								<div class="detail-value">${selected.currencyCode} (${escapeHtml(currencyLabel)})</div>
+							</div>
+						</div>
+						
+						<div class="exchange-rate">
+							<div class="rate-label">سعر الصرف المستخدم</div>
+							<div class="rate-value">${currentRate.toFixed(5)}</div>
+						</div>
+						
+						<div class="amounts-section">
+							<div class="amounts-title">تفاصيل المبالغ</div>
+							<div class="amounts-grid">
+								<div class="amount-card jod-card">
+									<div class="amount-label jod-label">المبلغ بالدينار الأردني</div>
+									<div class="amount-value jod-value">${jodAmount.toFixed(2)}</div>
+									<div class="amount-code">JOD</div>
+								</div>
+								<div class="amount-card currency-card">
+									<div class="amount-label currency-label">المبلغ بالعملة الأجنبية</div>
+									<div class="amount-value currency-value">${fxAmount.toFixed(2)}</div>
+									<div class="amount-code">${selected.currencyCode}</div>
+								</div>
+							</div>
+						</div>
+						
+						<div class="footer">
+							<div>شكراً لاختياركم شركة العلاونة للصرافة</div>
+							<div style="margin-top: 5px;">جميع الحقوق محفوظة © 2025</div>
+						</div>
+					</div>
+				</body>
+				</html>
+			`;
+
+			// إنشاء نافذة جديدة وعرض الوصل
+			const w = window.open('', '_blank', 'width=800,height=600,scrollbars=yes,resizable=yes');
+			w.document.write(receiptHtml);
+			w.document.close();
+			
+			// التركيز على النافذة وطباعة الوصل
+			w.focus();
+			
+			// انتظار قليل ثم طباعة الوصل
+			setTimeout(() => {
+				try {
+					w.print();
+				} catch (error) {
+					console.error('خطأ في الطباعة:', error);
+					// إنشاء وصل بديل في حالة فشل الطباعة
+					createAlternativeReceipt(ref, cashierName, opText, jodAmount, fxAmount, selected.currencyCode, currencyLabel, currentRate, arDate, enDate);
+				}
+			}, 500);
+
+			// Clear fields after issuing receipt
+			clearFormAfterReceipt();
+		}
+
+		// دالة إنشاء وصل بديل في حالة فشل الطباعة
+		function createAlternativeReceipt(ref, cashierName, opText, jodAmount, fxAmount, currencyCode, currencyLabel, currentRate, arDate, enDate) {
+			const alternativeReceipt = `
+				<div style="direction:rtl; font-family: Arial, sans-serif; width: 100%; max-width: 800px; margin: 20px auto; padding: 20px; background: white; border: 2px solid #007bff; border-radius: 10px; box-shadow: 0 4px 8px rgba(0,0,0,0.1);">
+					<div style="text-align: center; margin-bottom: 15px; border-bottom: 2px solid #007bff; padding-bottom: 10px;">
+						<h2 style="color: #007bff; margin: 5px 0; font-size: 18px;">شركة العلاونة للصرافة</h2>
+						<h3 style="color: #333; margin: 5px 0; font-size: 16px;">وصل ${opText}</h3>
+					</div>
+					
+					<div style="background: #f8f9fa; border: 1px solid #007bff; border-radius: 8px; padding: 10px; margin: 10px 0; text-align: center;">
+						<div style="font-size: 14px; font-weight: bold; color: #007bff; margin-bottom: 8px;">الرقم المرجعي: ${ref}</div>
+						<div style="font-size: 11px; color: #666;">
+							<div>التاريخ: ${arDate}</div>
+							<div>Date: ${enDate}</div>
+						</div>
+					</div>
+					
+					<div style="display: grid; grid-template-columns: 1fr; gap: 8px; margin: 15px 0;">
+						<div style="background: #ffffff; border: 1px solid #e9ecef; border-radius: 8px; padding: 10px;">
+							<div style="font-size: 10px; color: #6c757d; margin-bottom: 5px; font-weight: 600;">اسم الموظف</div>
+							<div style="font-size: 12px; font-weight: bold; color: #333;">${escapeHtml(cashierName)}</div>
+						</div>
+						<div style="background: #ffffff; border: 1px solid #e9ecef; border-radius: 8px; padding: 10px;">
+							<div style="font-size: 10px; color: #6c757d; margin-bottom: 5px; font-weight: 600;">اسم العميل</div>
+							<div style="font-size: 12px; font-weight: bold; color: #333;">${escapeHtml(chosenUser?.name || chosenUser?.username || '-')}</div>
+						</div>
+						<div style="background: #ffffff; border: 1px solid #e9ecef; border-radius: 8px; padding: 10px;">
+							<div style="font-size: 10px; color: #6c757d; margin-bottom: 5px; font-weight: 600;">نوع العملية</div>
+							<div style="font-size: 12px; font-weight: bold; color: #333;">${opText}</div>
+						</div>
+						<div style="background: #ffffff; border: 1px solid #e9ecef; border-radius: 8px; padding: 10px;">
+							<div style="font-size: 10px; color: #6c757d; margin-bottom: 5px; font-weight: 600;">العملة</div>
+							<div style="font-size: 12px; font-weight: bold; color: #333;">${currencyCode} (${escapeHtml(currencyLabel)})</div>
+						</div>
+					</div>
+					
+					<div style="background: transparent; border: none; padding: 10px; margin: 10px 0; text-align: center;">
+						<div style="font-size: 11px; color: #495057; margin-bottom: 5px; font-weight: 600;">سعر الصرف المستخدم</div>
+						<div style="font-size: 16px; font-weight: bold; color: #495057;">${currentRate.toFixed(5)}</div>
+					</div>
+					
+					<div style="background: linear-gradient(135deg, #f8f9fa 0%, #e9ecef 100%); border: 2px solid #007bff; border-radius: 12px; padding: 15px; margin: 15px 0;">
+						<div style="font-size: 14px; font-weight: bold; color: #007bff; text-align: center; margin-bottom: 10px;">تفاصيل المبالغ</div>
+						<div style="display: grid; grid-template-columns: 1fr 1fr; gap: 10px;">
+							<div style="background: linear-gradient(135deg, #e3f2fd 0%, #bbdefb 100%); border: 2px solid #2196f3; border-radius: 8px; padding: 10px; text-align: center;">
+								<div style="font-size: 10px; color: #1976d2; font-weight: 600; margin-bottom: 8px;">المبلغ بالدينار الأردني</div>
+								<div style="font-size: 18px; font-weight: 800; color: #1976d2; margin-bottom: 5px;">${jodAmount.toFixed(2)}</div>
+								<div style="font-size: 11px; font-weight: 600;">JOD</div>
+							</div>
+							<div style="background: linear-gradient(135deg, #e8f5e8 0%, #c8e6c9 100%); border: 2px solid #4caf50; border-radius: 8px; padding: 10px; text-align: center;">
+								<div style="font-size: 10px; color: #388e3c; font-weight: 600; margin-bottom: 8px;">المبلغ بالعملة الأجنبية</div>
+								<div style="font-size: 18px; font-weight: 800; color: #388e3c; margin-bottom: 5px;">${fxAmount.toFixed(2)}</div>
+								<div style="font-size: 11px; font-weight: 600;">${currencyCode}</div>
+							</div>
+						</div>
+					</div>
+					
+					<div style="text-align: center; margin-top: 20px; padding-top: 10px; border-top: 1px solid #e9ecef; color: #6c757d; font-size: 10px;">
+						<div>شكراً لاختياركم شركة العلاونة للصرافة</div>
+						<div style="margin-top: 5px;">جميع الحقوق محفوظة © 2025</div>
+					</div>
+				</div>
+			`;
+			
+			// إنشاء نافذة جديدة للوصل البديل
+			const altWindow = window.open('', '_blank', 'width=900,height=700,scrollbars=yes,resizable=yes');
+			altWindow.document.write(`
+				<!DOCTYPE html>
+				<html dir="rtl" lang="ar">
+				<head>
+					<meta charset="UTF-8">
+					<title>وصل تبديل عملة - ${ref}</title>
+					<style>
+						body { margin: 0; padding: 20px; background: #f5f5f5; }
+						.print-btn { 
+							position: fixed; 
+							top: 10px; 
+							right: 10px; 
+							background: #007bff; 
+							color: white; 
+							border: none; 
+							padding: 10px 20px; 
+							border-radius: 5px; 
+							cursor: pointer; 
+							font-size: 14px;
+						}
+					</style>
+				</head>
+				<body>
+					<button class="print-btn" onclick="window.print()">طباعة الوصل</button>
+					${alternativeReceipt}
+				</body>
+				</html>
+			`);
+			altWindow.document.close();
+			altWindow.focus();
+		}
+
+        function clearFormAfterReceipt() {
+            const jodEl = document.getElementById('amountJOD');
+            const fxEl = document.getElementById('amountFX');
+            const userSearchEl = document.getElementById('userSearch');
+            const selectedBox = document.getElementById('userSelected');
+            const countrySelect = document.getElementById('countrySelect');
+            
+            // تفريق جميع الحقول
+            jodEl.value = '';
+            fxEl.value = '';
+            userSearchEl.value = '';
+            chosenUser = null;
+            
+            // إعادة تعيين اختيار العملة
+            if (countrySelect && countrySelect.options.length > 0) {
+                countrySelect.selectedIndex = 0;
+                onCountryChange();
+            }
+            
+            // إخفاء المستخدم المختار
+            if (selectedBox) { 
+                selectedBox.classList.remove('show'); 
+                selectedBox.innerHTML = ''; 
+            }
+            
+            // تم حذف البطاقة الزرقاء - لا حاجة لإعادة تعيين النتيجة
+            
+            // إعادة تعيين نوع العملية إلى البيع
+            setMode('sell');
+        }
+
+        // إعادة تحميل البيانات كل 5 دقائق
+        setInterval(async () => {
+            if (document.visibilityState === 'visible') {
+                console.log('إعادة تحميل أسعار الصرف...');
+                await loadRates();
+            }
+        }, 300000); // 5 دقائق
+    </script>
+</body>
+</html>
+
+

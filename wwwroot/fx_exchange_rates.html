@@ -1,0 +1,454 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>أسعار صرف العملات - AlawnehEway</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
+    <style>
+        body {
+            background-color: #f8f9fa;
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+        }
+        .main-container {
+            max-width: 1200px;
+            margin: 0 auto;
+            padding: 20px;
+        }
+        .card {
+            border: none;
+            border-radius: 15px;
+            box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+            margin-bottom: 20px;
+        }
+        .card-header {
+            background: linear-gradient(135deg, #007bff 0%, #0056b3 100%);
+            color: white;
+            border-radius: 15px 15px 0 0 !important;
+            padding: 20px;
+        }
+        .btn-primary {
+            background: linear-gradient(135deg, #007bff 0%, #0056b3 100%);
+            border: none;
+            border-radius: 25px;
+            padding: 10px 25px;
+        }
+        .btn-success {
+            background: linear-gradient(135deg, #56ab2f 0%, #a8e6cf 100%);
+            border: none;
+            border-radius: 25px;
+        }
+        .btn-danger {
+            background: linear-gradient(135deg, #ff416c 0%, #ff4b2b 100%);
+            border: none;
+            border-radius: 25px;
+        }
+        .table {
+            border-radius: 10px;
+            overflow: hidden;
+        }
+        .table thead th {
+            background: linear-gradient(135deg, #007bff 0%, #0056b3 100%);
+            color: white;
+            border: none;
+            font-weight: 600;
+        }
+        .form-control, .form-select {
+            border-radius: 10px;
+            border: 2px solid #e9ecef;
+            padding: 12px 15px;
+        }
+        .form-control:focus, .form-select:focus {
+            border-color: #007bff;
+            box-shadow: 0 0 0 0.2rem rgba(0, 123, 255, 0.25);
+        }
+        .alert {
+            border-radius: 10px;
+            border: none;
+        }
+        .spread {
+            font-weight: bold;
+            color: #28a745;
+        }
+        .currency-badge {
+            background: linear-gradient(135deg, #007bff 0%, #0056b3 100%);
+            color: white;
+            padding: 5px 15px;
+            border-radius: 20px;
+            font-weight: bold;
+        }
+    </style>
+</head>
+<body>
+    <div class="main-container">
+        <!-- Header -->
+        <div class="card">
+            <div class="card-header">
+                <div class="d-flex justify-content-between align-items-center">
+                    <div>
+                        <h2 class="mb-0"><i class="fas fa-exchange-alt me-2"></i>أسعار صرف العملات</h2>
+                        <p class="mb-0 mt-2">إدارة أسعار شراء وبيع العملات الأجنبية</p>
+                    </div>
+                    <button class="btn btn-light" onclick="location.href='index.html'">
+                        <i class="fas fa-home me-2"></i>الرئيسية
+                    </button>
+                </div>
+            </div>
+        </div>
+
+        <!-- Add/Edit Form -->
+        <div class="card" id="formCard" style="display: none;">
+            <div class="card-header">
+                <h4 class="mb-0"><i class="fas fa-plus-circle me-2"></i>إضافة/تعديل سعر صرف</h4>
+            </div>
+            <div class="card-body">
+                <form id="fxRateForm">
+                    <div class="row">
+                        <div class="col-md-3">
+                            <div class="mb-3">
+                                <label for="currency" class="form-label">العملة</label>
+                                <select class="form-select" id="currency" required>
+                                    <option value="">اختر العملة</option>
+                                    <option value="USD">دولار أمريكي (USD)</option>
+                                    <option value="EUR">يورو (EUR)</option>
+                                    <option value="GBP">جنيه إسترليني (GBP)</option>
+                                    <option value="SAR">ريال سعودي (SAR)</option>
+                                    <option value="AED">درهم إماراتي (AED)</option>
+                                    <option value="TRY">ليرة تركية (TRY)</option>
+                                    <option value="EGP">جنيه مصري (EGP)</option>
+                                </select>
+                            </div>
+                        </div>
+                        <div class="col-md-3">
+                            <div class="mb-3">
+                                <label for="buyRate" class="form-label">سعر الشراء</label>
+                                <input type="number" class="form-control" id="buyRate" step="0.00001" min="0" required>
+                                <small class="text-muted">السعر الذي يشتري به الصندوق العملة</small>
+                            </div>
+                        </div>
+                        <div class="col-md-3">
+                            <div class="mb-3">
+                                <label for="sellRate" class="form-label">سعر البيع</label>
+                                <input type="number" class="form-control" id="sellRate" step="0.00001" min="0" required>
+                                <small class="text-muted">السعر الذي يبيع به الصندوق العملة</small>
+                            </div>
+                        </div>
+                        <div class="col-md-3">
+                            <div class="mb-3">
+                                <label for="cashierId" class="form-label">الصندوق</label>
+                                <select class="form-select" id="cashierId">
+                                    <option value="">اختر الصندوق</option>
+                                </select>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="d-flex gap-2">
+                        <button type="submit" class="btn btn-success">
+                            <i class="fas fa-save me-2"></i>حفظ
+                        </button>
+                        <button type="button" class="btn btn-secondary" onclick="hideForm()">
+                            <i class="fas fa-times me-2"></i>إلغاء
+                        </button>
+                    </div>
+                </form>
+            </div>
+        </div>
+
+        <!-- Rates List -->
+        <div class="card">
+            <div class="card-header">
+                <div class="d-flex justify-content-between align-items-center">
+                    <h4 class="mb-0"><i class="fas fa-list me-2"></i>قائمة أسعار الصرف</h4>
+                    <button class="btn btn-primary" onclick="showAddForm()">
+                        <i class="fas fa-plus me-2"></i>إضافة سعر جديد
+                    </button>
+                </div>
+            </div>
+            <div class="card-body">
+                <div id="loadingSpinner" class="text-center py-4">
+                    <div class="spinner-border text-primary" role="status">
+                        <span class="visually-hidden">جاري التحميل...</span>
+                    </div>
+                </div>
+                <div id="ratesList" style="display: none;">
+                    <!-- Rates will be loaded here -->
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Delete Confirmation Modal -->
+    <div class="modal fade" id="deleteModal" tabindex="-1">
+        <div class="modal-dialog">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title">تأكيد الحذف</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                </div>
+                <div class="modal-body">
+                    <p>هل أنت متأكد من حذف سعر الصرف هذا؟</p>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">إلغاء</button>
+                    <button type="button" class="btn btn-danger" id="confirmDelete">حذف</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+    <script>
+        let currentEditId = null;
+        let deleteId = null;
+
+        // Load cashiers for dropdown
+        async function loadCashiers() {
+            try {
+                const response = await fetch('/admin/cashiers');
+                const cashiers = await response.json();
+                const select = document.getElementById('cashierId');
+                select.innerHTML = '<option value="">اختر الصندوق</option>';
+                cashiers.forEach(cashier => {
+                    const option = document.createElement('option');
+                    option.value = cashier.id;
+                    option.textContent = `${cashier.name} (${cashier.username})`;
+                    select.appendChild(option);
+                });
+            } catch (error) {
+                console.error('Error loading cashiers:', error);
+            }
+        }
+
+        // Load FX exchange rates
+        async function loadFxRates() {
+            try {
+                const response = await fetch('/fx-exchange-rates');
+                const rates = await response.json();
+                displayRates(rates);
+            } catch (error) {
+                console.error('Error loading FX rates:', error);
+                showAlert('خطأ في تحميل أسعار الصرف', 'danger');
+            }
+        }
+
+        // Display rates in table
+        function displayRates(rates) {
+            const container = document.getElementById('ratesList');
+            const loadingSpinner = document.getElementById('loadingSpinner');
+            
+            loadingSpinner.style.display = 'none';
+            
+            if (rates.length === 0) {
+                container.innerHTML = `
+                    <div class="text-center py-4">
+                        <i class="fas fa-exchange-alt fa-3x text-muted mb-3"></i>
+                        <p class="text-muted">لا توجد أسعار صرف مسجلة</p>
+                    </div>
+                `;
+                container.style.display = 'block';
+                return;
+            }
+
+            let html = `
+                <div class="table-responsive">
+                    <table class="table table-hover">
+                        <thead>
+                            <tr>
+                                <th>العملة</th>
+                                <th>سعر الشراء</th>
+                                <th>سعر البيع</th>
+                                <th>الفرق</th>
+                                <th>الصندوق</th>
+                                <th>آخر تحديث</th>
+                                <th>العمليات</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+            `;
+
+            rates.forEach(rate => {
+                const spread = rate.sellRate - rate.buyRate;
+                const spreadPercent = ((spread / rate.buyRate) * 100).toFixed(2);
+                const lastModified = rate.lastModifiedAt ? new Date(rate.lastModifiedAt).toLocaleDateString('ar-JO') : new Date(rate.createdAt).toLocaleDateString('ar-JO');
+                
+                html += `
+                    <tr>
+                        <td><span class="currency-badge">${rate.currency}</span></td>
+                        <td>${rate.buyRate.toFixed(5)}</td>
+                        <td>${rate.sellRate.toFixed(5)}</td>
+                        <td><span class="spread">${spread.toFixed(5)} (${spreadPercent}%)</span></td>
+                        <td>${rate.cashier ? rate.cashier.name : 'غير محدد'}</td>
+                        <td>${lastModified}</td>
+                        <td>
+                            <div class="btn-group btn-group-sm">
+                                <button class="btn btn-outline-primary" onclick="editRate(${rate.id})" title="تعديل">
+                                    <i class="fas fa-edit"></i>
+                                </button>
+                                <button class="btn btn-outline-danger" onclick="confirmDelete(${rate.id})" title="حذف">
+                                    <i class="fas fa-trash"></i>
+                                </button>
+                            </div>
+                        </td>
+                    </tr>
+                `;
+            });
+
+            html += `
+                        </tbody>
+                    </table>
+                </div>
+            `;
+
+            container.innerHTML = html;
+            container.style.display = 'block';
+        }
+
+        // Show add form
+        function showAddForm() {
+            currentEditId = null;
+            document.getElementById('fxRateForm').reset();
+            document.getElementById('formCard').style.display = 'block';
+            document.getElementById('formCard').scrollIntoView({ behavior: 'smooth' });
+        }
+
+        // Hide form
+        function hideForm() {
+            document.getElementById('formCard').style.display = 'none';
+            currentEditId = null;
+        }
+
+        // Edit rate
+        async function editRate(id) {
+            try {
+                const response = await fetch(`/fx-exchange-rates`);
+                const rates = await response.json();
+                const rate = rates.find(r => r.id === id);
+                
+                if (rate) {
+                    currentEditId = id;
+                    document.getElementById('currency').value = rate.currency;
+                    document.getElementById('buyRate').value = rate.buyRate;
+                    document.getElementById('sellRate').value = rate.sellRate;
+                    document.getElementById('cashierId').value = rate.cashierId || '';
+                    
+                    document.getElementById('formCard').style.display = 'block';
+                    document.getElementById('formCard').scrollIntoView({ behavior: 'smooth' });
+                }
+            } catch (error) {
+                console.error('Error loading rate for edit:', error);
+                showAlert('خطأ في تحميل بيانات السعر', 'danger');
+            }
+        }
+
+        // Confirm delete
+        function confirmDelete(id) {
+            deleteId = id;
+            const modal = new bootstrap.Modal(document.getElementById('deleteModal'));
+            modal.show();
+        }
+
+        // Form submission
+        document.getElementById('fxRateForm').addEventListener('submit', async (e) => {
+            e.preventDefault();
+            
+            const formData = {
+                currency: document.getElementById('currency').value,
+                buyRate: parseFloat(document.getElementById('buyRate').value),
+                sellRate: parseFloat(document.getElementById('sellRate').value),
+                cashierId: document.getElementById('cashierId').value ? parseInt(document.getElementById('cashierId').value) : null,
+            };
+
+            // Validation
+            if (formData.buyRate >= formData.sellRate) {
+                showAlert('سعر الشراء يجب أن يكون أقل من سعر البيع', 'danger');
+                return;
+            }
+
+            try {
+                let response;
+                if (currentEditId) {
+                    response = await fetch(`/fx-exchange-rates/${currentEditId}`, {
+                        method: 'PUT',
+                        headers: {
+                            'Content-Type': 'application/json'
+                        },
+                        body: JSON.stringify(formData)
+                    });
+                } else {
+                    response = await fetch('/fx-exchange-rates', {
+                        method: 'POST',
+                        headers: {
+                            'Content-Type': 'application/json'
+                        },
+                        body: JSON.stringify(formData)
+                    });
+                }
+
+                if (response.ok) {
+                    showAlert(currentEditId ? 'تم تحديث سعر الصرف بنجاح' : 'تم إضافة سعر الصرف بنجاح', 'success');
+                    hideForm();
+                    loadFxRates();
+                } else {
+                    const error = await response.json();
+                    showAlert(error.detail || 'حدث خطأ أثناء الحفظ', 'danger');
+                }
+            } catch (error) {
+                console.error('Error saving rate:', error);
+                showAlert('خطأ في الاتصال بالخادم', 'danger');
+            }
+        });
+
+        // Delete rate
+        document.getElementById('confirmDelete').addEventListener('click', async () => {
+            if (!deleteId) return;
+
+            try {
+                const response = await fetch(`/fx-exchange-rates/${deleteId}`, {
+                    method: 'DELETE'
+                });
+
+                if (response.ok) {
+                    showAlert('تم حذف سعر الصرف بنجاح', 'success');
+                    bootstrap.Modal.getInstance(document.getElementById('deleteModal')).hide();
+                    loadFxRates();
+                } else {
+                    const error = await response.json();
+                    showAlert(error.detail || 'حدث خطأ أثناء الحذف', 'danger');
+                }
+            } catch (error) {
+                console.error('Error deleting rate:', error);
+                showAlert('خطأ في الاتصال بالخادم', 'danger');
+            }
+            
+            deleteId = null;
+        });
+
+        // Show alert
+        function showAlert(message, type) {
+            const alertDiv = document.createElement('div');
+            alertDiv.className = `alert alert-${type} alert-dismissible fade show`;
+            alertDiv.innerHTML = `
+                ${message}
+                <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+            `;
+            
+            const container = document.querySelector('.main-container');
+            container.insertBefore(alertDiv, container.firstChild);
+            
+            // Auto remove after 5 seconds
+            setTimeout(() => {
+                if (alertDiv.parentNode) {
+                    alertDiv.remove();
+                }
+            }, 5000);
+        }
+
+        // Initialize page
+        document.addEventListener('DOMContentLoaded', function() {
+            loadCashiers();
+            loadFxRates();
+        });
+    </script>
+</body>
+</html>

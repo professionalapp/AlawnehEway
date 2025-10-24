@@ -1,0 +1,57 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>أسعار صرف تبديل العملات - Alawneh Eway</title>
+    <link rel="stylesheet" href="css/style.css">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
+    <script src="js/countries.js"></script>
+</head>
+<body>
+    <div class="container">
+        <header class="header">
+            <div style="display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap;">
+                <div class="logo">
+                    <i class="fas fa-sliders"></i>
+                    <h1>أسعار صرف تبديل العملات</h1>
+                </div>
+                <a href="index.html" style="color: #ffffff; text-decoration: none; font-size: 16px; display: flex; align-items: center; gap: 6px; transition: opacity 0.3s;">
+                    <i class="fas fa-home"></i>
+                    <span>العودة للصفحة الرئيسية</span>
+                </a>
+            </div>
+            <p class="subtitle">إدارة أسعار الصرف الخاصة بصفحة تبديل العملات</p>
+        </header>
+
+        <main class="main-content">
+            <iframe src="exchange_rates.html" style="width: 100%; height: calc(100vh - 180px); border: none; border-radius: 12px; background: transparent;" title="Exchange Rates"></iframe>
+        </main>
+
+        <footer class="footer">
+            <p> نظام Alawneh-Eway. جميع الحقوق محفوظة. &copy; 2025</p>
+        </footer>
+    </div>
+
+    <script>
+        // Force scope toggle to FxCounter inside the embedded page
+        window.addEventListener('load', () => {
+            const iframe = document.querySelector('iframe');
+            iframe.addEventListener('load', () => {
+                try {
+                    const doc = iframe.contentDocument || iframe.contentWindow.document;
+                    const fxRadio = doc.querySelector('input[name="scopeToggle"][value="FxCounter"]');
+                    const remRadio = doc.querySelector('input[name="scopeToggle"][value="Remittance"]');
+                    if (fxRadio) {
+                        fxRadio.checked = true;
+                        fxRadio.dispatchEvent(new Event('change'));
+                    }
+                    if (remRadio) remRadio.disabled = false; // allow switching if needed
+                } catch (e) {}
+            });
+        });
+    </script>
+</body>
+</html>
+
+

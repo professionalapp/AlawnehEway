@@ -3,6 +3,13 @@ using AlawnehEway.Models;
 using System.Globalization;
 using System.Security.Cryptography;
 
+// Helper to generate unique reference numbers
+string GenerateReference(string prefix, DateTime date)
+{
+    // Format: PREFIX-ddMMyyyy-HHmmss-milliseconds (e.g., RM-24102025-143059-123)
+    return $"{prefix}-{date.ToString("ddMMyyyy-HHmmss-fff")}";
+}
+
 var builder = WebApplication.CreateBuilder(args);
 
 // Add services to the container.
@@ -12,6 +19,10 @@ builder.Services.AddSwaggerGen();
 
 builder.Services.AddDbContext<ApplicationDbContext>(options =>
     options.UseSqlServer(builder.Configuration.GetConnectionString("DefaultConnection")));
+
+// إضافة قاعدة البيانات الجديدة لأسعار صرف العملات
+builder.Services.AddDbContext<FxDbContext>(options =>
+    options.UseSqlServer(builder.Configuration.GetConnectionString("FxConnection") ?? builder.Configuration.GetConnectionString("DefaultConnection")));
 
 var app = builder.Build();
 
@@ -32,11 +43,13 @@ app.UseStaticFiles();
 using (var scope = app.Services.CreateScope())
 {
     var db = scope.ServiceProvider.GetRequiredService<ApplicationDbContext>();
+    var fxDb = scope.ServiceProvider.GetRequiredService<FxDbContext>();
     if (app.Environment.IsProduction())
     {
         try
         {
             await db.Database.MigrateAsync();
+            await fxDb.Database.MigrateAsync();
         }
         catch (Exception ex)
         {
@@ -137,6 +150,7 @@ string NormalizeCountry(string? input)
     return map.TryGetValue(value, out var canonical) ? canonical : value;
 }
 
+// دالة مساعدة للحصول على التسمية العربية للدولة
 string? GetArabicLabelForCanonical(string canonical)
 {
     return canonical switch
@@ -463,6 +477,30 @@ app.MapGet("/users", async (ApplicationDbContext db) =>
 .WithName("GetAllUsers")
 .WithOpenApi();
 
+// API لفحص المستخدمين الحاليين مع تفاصيلهم
+app.MapGet("/debug/users", async (ApplicationDbContext db) =>
+{
+    var users = await db.Users
+        .Select(u => new
+        {
+            u.Id,
+            u.Username,
+            u.Name,
+            u.Email,
+            u.Department,
+            u.Role,
+            u.IsActive,
+            u.CreatedAt,
+            u.LastLoginAt
+        })
+        .OrderBy(u => u.Id)
+        .ToListAsync();
+
+    return Results.Ok(users);
+})
+.WithName("DebugUsers")
+.WithOpenApi();
+
 // تحديث بيانات مستخدم معين
 app.MapPut("/users/{id:int}", async (int id, User user, ApplicationDbContext db) =>
 {
@@ -480,6 +518,26 @@ app.MapPut("/users/{id:int}", async (int id, User user, ApplicationDbContext db)
     return Results.Ok(existingUser);
 })
 .WithName("UpdateUser")
+.WithOpenApi();
+
+// API لتحديث اسم مستخدم معين
+app.MapPut("/users/{id:int}/name", async (int id, string newName, ApplicationDbContext db) =>
+{
+    var existingUser = await db.Users.FindAsync(id);
+    if (existingUser is null) return Results.NotFound("المستخدم غير موجود");
+
+    existingUser.Name = newName;
+    await db.SaveChangesAsync();
+
+    return Results.Ok(new
+    {
+        message = "تم تحديث الاسم بنجاح",
+        userId = existingUser.Id,
+        oldName = existingUser.Name,
+        newName = newName
+    });
+})
+.WithName("UpdateUserName")
 .WithOpenApi();
 
 // حذف مستخدم معين
@@ -662,14 +720,13 @@ app.MapPost("/remittances", async (Remittance remittance, ApplicationDbContext d
     remittance.Status = "Payment pending";
 
     // توليد رقم مرجعي: ddMMyyyy + 5 أرقام
-    string GenerateReference(DateTime dt)
+    string GenerateReference(string prefix, DateTime dt)
     {
-        var datePart = dt.ToString("ddMMyyyy", CultureInfo.InvariantCulture);
-        var randomPart = Random.Shared.Next(10000, 99999).ToString(CultureInfo.InvariantCulture);
-        return $"{datePart}{randomPart}";
+        // Format: PREFIX-ddMMyyyy-HHmmss-milliseconds (e.g., RM-24102025-143059-123)
+        return $"{prefix}-{dt.ToString("ddMMyyyy-HHmmss-fff")}";
     }
 
-    remittance.Reference = GenerateReference(remittance.CreatedAt);
+    remittance.Reference = GenerateReference("RM", remittance.CreatedAt);
 
     // التحقق من وجود المرسل والمستفيد
     var senderExists = await db.Parties.AnyAsync(p => p.Id == remittance.SenderId);
@@ -686,7 +743,7 @@ app.MapPost("/remittances", async (Remittance remittance, ApplicationDbContext d
         if (senderCashier != null)
         {
             var totalReceived = remittance.Amount + remittance.Fee;
-            senderCashier.Balance += totalReceived; // إضافة المبلغ والعمولة
+            senderCashier.Balance -= totalReceived; // خصم المبلغ الإجمالي من رصيد الصراف المرسل
             senderCashier.LastBalanceUpdate = DateTime.UtcNow;
         }
     }
@@ -715,11 +772,11 @@ app.MapPost("/remittances", async (Remittance remittance, ApplicationDbContext d
             r.Country,
             r.Amount,
             r.Fee,
+            r.Reason,
+            r.Purpose,
             r.Status,
             r.CreatedAt,
             r.PaidAt,
-            r.Reason,
-            r.Purpose,
             Sender = new
             {
                 r.Sender!.Id,
@@ -751,7 +808,7 @@ app.MapPost("/remittances", async (Remittance remittance, ApplicationDbContext d
         })
         .FirstOrDefaultAsync();
 
-    return Results.Created($"/remittances/{remittance.Id}", createdRemittance);
+    return Results.Created($"/remittances/{createdRemittance?.Id}", createdRemittance);
 })
 .WithName("CreateRemittance")
 .WithOpenApi();
@@ -772,6 +829,8 @@ app.MapGet("/remittances", async (ApplicationDbContext db) =>
             r.Country,
             r.Amount,
             r.Fee,
+            r.Reason,
+            r.Purpose,
             r.Status,
             r.CreatedAt,
             r.PaidAt,
@@ -865,6 +924,8 @@ app.MapGet("/remittances/search", async (string? q, string? fromDate, string? to
             r.Country,
             r.Amount,
             r.Fee,
+            r.Reason,
+            r.Purpose,
             r.Status,
             r.CreatedAt,
             r.PaidAt,
@@ -1126,7 +1187,7 @@ app.MapPost("/compliance/force-pay", async (string reference, int receiverUserId
     r.Status = "Paid";
     r.PaidAt = DateTime.UtcNow;
     await db.SaveChangesAsync();
-    return Results.Ok(new { message = "تم التسليم بنجاح مع تجاوز الالتزام", r.Id, r.Reference, r.Status });
+    return Results.Ok(new { message = "تم فك الحوالة و سحبها", r.Id, r.Reference, r.Status });
 })
 .WithName("ForcePayComplianceHold")
 .WithOpenApi();
@@ -1255,6 +1316,8 @@ app.MapGet("/parties/{id:int}/remittances", async (int id, ApplicationDbContext 
             r.Country,
             r.Amount,
             r.Fee,
+            r.Reason,
+            r.Purpose,
             r.Status,
             r.CreatedAt,
             r.PaidAt,
@@ -1430,27 +1493,61 @@ app.MapPost("/remittances/change-requests/{id:int}/reject", async (int id, Appli
 // === أسعار الصرف ===
 
 // الحصول على جميع أسعار الصرف (مجموعة بدون تكرار على مستوى الدولة)
-app.MapGet("/exchange-rates", async (ApplicationDbContext db) =>
+app.MapGet("/exchange-rates", async (ApplicationDbContext db, ExchangeRateScope? scope) =>
 {
-    var all = await db.ExchangeRates
-        .OrderBy(er => er.Country)
-        .ThenByDescending(er => er.LastModifiedAt ?? er.CreatedAt)
-        .ToListAsync();
-    var distinct = all
-        .GroupBy(er => er.Country)
-        .Select(g => g.First())
-        .OrderBy(er => er.Country)
-        .ToList();
-    return Results.Ok(distinct);
+    try
+    {
+        var query = db.ExchangeRates.AsQueryable();
+
+        if (scope.HasValue)
+        {
+            var s = scope.Value;
+            // فصل كامل بين أسعار الحوالات وتبديل العملات
+            query = query.Where(er => er.Scope == s);
+        }
+
+        var all = await query
+            .OrderBy(er => er.Country)
+            .ThenByDescending(er => er.LastModifiedAt ?? er.CreatedAt)
+            .ToListAsync();
+
+        // تصفية البيانات غير الصحيحة
+        var validRates = all.Where(er =>
+            !string.IsNullOrWhiteSpace(er.Country) &&
+            er.Rate > 0 &&
+            !string.IsNullOrWhiteSpace(er.Currency)
+        ).ToList();
+
+        var distinct = validRates
+            .GroupBy(er => er.Country)
+            .Select(g => g.First())
+            .OrderBy(er => er.Country)
+            .ToList();
+
+        Console.WriteLine($"تم جلب {distinct.Count} سعر صرف صحيح من أصل {all.Count} سعر");
+        return Results.Ok(distinct);
+    }
+    catch (Exception ex)
+    {
+        Console.WriteLine($"خطأ في جلب أسعار الصرف: {ex.Message}");
+        return Results.Problem($"خطأ في جلب أسعار الصرف: {ex.Message}");
+    }
 })
 .WithName("GetExchangeRates")
 .WithOpenApi();
 
 // الحصول على سعر صرف دولة معينة
-app.MapGet("/exchange-rates/{country}", async (string country, ApplicationDbContext db) =>
+app.MapGet("/exchange-rates/{country}", async (string country, ApplicationDbContext db, ExchangeRateScope? scope) =>
 {
     var normalized = NormalizeCountry(country);
-    var rate = await db.ExchangeRates.FirstOrDefaultAsync(er => er.Country == normalized);
+    var query = db.ExchangeRates.Where(er => er.Country == normalized);
+    if (scope.HasValue)
+    {
+        var s = scope.Value;
+        // فصل كامل بين أسعار الحوالات وتبديل العملات
+        query = query.Where(er => er.Scope == s);
+    }
+    var rate = await query.FirstOrDefaultAsync();
     return rate is null ? Results.NotFound("سعر الصرف غير موجود") : Results.Ok(rate);
 })
 .WithName("GetExchangeRate")
@@ -1459,18 +1556,30 @@ app.MapGet("/exchange-rates/{country}", async (string country, ApplicationDbCont
 // إضافة سعر صرف جديد
 app.MapPost("/exchange-rates", async (ExchangeRate exchangeRate, ApplicationDbContext db) =>
 {
-    // التحقق من عدم وجود دولة بنفس الاسم
-    exchangeRate.Country = NormalizeCountry(exchangeRate.Country);
-    var existing = await db.ExchangeRates.AnyAsync(er => er.Country == exchangeRate.Country);
-    if (existing)
+    try
     {
-        return Results.BadRequest("يوجد سعر صرف لهذه الدولة بالفعل");
-    }
+        // التحقق من عدم وجود دولة بنفس الاسم ضمن نفس النطاق
+        exchangeRate.Country = NormalizeCountry(exchangeRate.Country);
+        var existing = await db.ExchangeRates.FirstOrDefaultAsync(er => er.Country == exchangeRate.Country && er.Scope == exchangeRate.Scope);
+        if (existing != null)
+        {
+            return Results.BadRequest($"يوجد سعر صرف لهذه الدولة ({exchangeRate.Country}) بالفعل لهذا النطاق. يرجى تحديث السعر الموجود بدلاً من إضافة جديد.");
+        }
 
-    exchangeRate.CreatedAt = DateTime.Now; // استخدام التوقيت المحلي
-    db.ExchangeRates.Add(exchangeRate);
-    await db.SaveChangesAsync();
-    return Results.Created($"/exchange-rates/{exchangeRate.Id}", exchangeRate);
+        exchangeRate.CreatedAt = DateTime.Now; // استخدام التوقيت المحلي
+        db.ExchangeRates.Add(exchangeRate);
+        await db.SaveChangesAsync();
+        return Results.Created($"/exchange-rates/{exchangeRate.Id}", exchangeRate);
+    }
+    catch (Exception ex)
+    {
+        // معالجة أخطاء قاعدة البيانات بشكل أفضل
+        if (ex.InnerException?.Message?.Contains("duplicate key") == true)
+        {
+            return Results.BadRequest($"يوجد سعر صرف لهذه الدولة ({exchangeRate.Country}) بالفعل. يرجى تحديث السعر الموجود بدلاً من إضافة جديد.");
+        }
+        return Results.Problem($"خطأ في قاعدة البيانات: {ex.Message}");
+    }
 })
 .WithName("CreateExchangeRate")
 .WithOpenApi();
@@ -1490,12 +1599,12 @@ app.MapPut("/exchange-rates/{id:int}", async (int id, ExchangeRate exchangeRate,
         if (exchangeRate.Rate <= 0)
             return Results.BadRequest("سعر الصرف يجب أن يكون أكبر من صفر");
 
-        // التحقق من عدم وجود دولة أخرى بنفس الاسم
+        // التحقق من عدم وجود دولة أخرى بنفس الاسم في نفس النطاق
         exchangeRate.Country = NormalizeCountry(exchangeRate.Country);
-        var duplicate = await db.ExchangeRates.AnyAsync(er => er.Country == exchangeRate.Country && er.Id != id);
+        var duplicate = await db.ExchangeRates.AnyAsync(er => er.Country == exchangeRate.Country && er.Scope == exchangeRate.Scope && er.Id != id);
         if (duplicate)
         {
-            return Results.BadRequest("يوجد سعر صرف لدولة أخرى بنفس الاسم");
+            return Results.BadRequest("يوجد سعر صرف لهذه الدولة بالفعل في نفس النطاق");
         }
 
         // تحديث الحقول
@@ -1503,6 +1612,7 @@ app.MapPut("/exchange-rates/{id:int}", async (int id, ExchangeRate exchangeRate,
         existing.Rate = exchangeRate.Rate;
         existing.Currency = exchangeRate.Currency;
         existing.Notes = exchangeRate.Notes;
+        existing.Scope = exchangeRate.Scope;
         existing.LastModifiedAt = DateTime.Now; // استخدام التوقيت المحلي بدلاً من UTC
 
         // التأكد من تتبع التغييرات وحفظها
@@ -1721,6 +1831,396 @@ app.MapPut("/cashiers/{id:int}/initial-balance", async (ApplicationDbContext db,
     });
 })
 .WithName("SetCashierInitialBalance")
+.WithOpenApi();
+
+// ==================== أسعار صرف العملات (FX Exchange Rates) ====================
+
+// الحصول على جميع أسعار صرف العملات
+app.MapGet("/fx-exchange-rates", async (FxDbContext fxDb) =>
+{
+    try
+    {
+        var rates = await fxDb.FxExchangeRates
+            .Include(fx => fx.Cashier)
+            .OrderBy(fx => fx.Currency)
+            .ToListAsync();
+
+        return Results.Ok(rates);
+    }
+    catch (Exception ex)
+    {
+        Console.WriteLine($"خطأ في جلب أسعار صرف العملات: {ex.Message}");
+        return Results.Problem($"خطأ في جلب أسعار صرف العملات: {ex.Message}");
+    }
+})
+.WithName("GetFxExchangeRates")
+.WithOpenApi();
+
+// الحصول على سعر صرف عملة معينة
+app.MapGet("/fx-exchange-rates/{currency}", async (string currency, FxDbContext fxDb) =>
+{
+    try
+    {
+        var rate = await fxDb.FxExchangeRates
+            .Include(fx => fx.Cashier)
+            .FirstOrDefaultAsync(fx => fx.Currency == currency.ToUpper());
+
+        return rate is null ? Results.NotFound("سعر الصرف غير موجود") : Results.Ok(rate);
+    }
+    catch (Exception ex)
+    {
+        Console.WriteLine($"خطأ في جلب سعر صرف العملة {currency}: {ex.Message}");
+        return Results.Problem($"خطأ في جلب سعر صرف العملة: {ex.Message}");
+    }
+})
+.WithName("GetFxExchangeRate")
+.WithOpenApi();
+
+// إضافة سعر صرف عملة جديد
+app.MapPost("/fx-exchange-rates", async (FxExchangeRate fxRate, FxDbContext fxDb) =>
+{
+    try
+    {
+        // التحقق من عدم وجود عملة بنفس الاسم
+        fxRate.Currency = fxRate.Currency.ToUpper();
+        var existing = await fxDb.FxExchangeRates.FirstOrDefaultAsync(fx => fx.Currency == fxRate.Currency);
+        if (existing != null)
+        {
+            return Results.BadRequest($"يوجد سعر صرف لهذه العملة ({fxRate.Currency}) بالفعل. يرجى تحديث السعر الموجود بدلاً من إضافة جديد.");
+        }
+
+        // التحقق من صحة البيانات
+        if (fxRate.BuyRate <= 0 || fxRate.SellRate <= 0)
+        {
+            return Results.BadRequest("أسعار الشراء والبيع يجب أن تكون أكبر من صفر");
+        }
+
+        if (fxRate.BuyRate >= fxRate.SellRate)
+        {
+            return Results.BadRequest("سعر الشراء يجب أن يكون أقل من سعر البيع");
+        }
+
+        fxRate.CreatedAt = DateTime.Now;
+        fxDb.FxExchangeRates.Add(fxRate);
+        await fxDb.SaveChangesAsync();
+
+        return Results.Created($"/fx-exchange-rates/{fxRate.Id}", fxRate);
+    }
+    catch (Exception ex)
+    {
+        Console.WriteLine($"خطأ في إضافة سعر صرف العملة: {ex.Message}");
+        return Results.Problem($"خطأ في إضافة سعر صرف العملة: {ex.Message}");
+    }
+})
+.WithName("CreateFxExchangeRate")
+.WithOpenApi();
+
+// تحديث سعر صرف عملة
+app.MapPut("/fx-exchange-rates/{id:int}", async (int id, FxExchangeRate fxRate, FxDbContext fxDb) =>
+{
+    try
+    {
+        var existing = await fxDb.FxExchangeRates.FindAsync(id);
+        if (existing is null) return Results.NotFound("سعر الصرف غير موجود");
+
+        // التحقق من صحة البيانات
+        if (fxRate.BuyRate <= 0 || fxRate.SellRate <= 0)
+        {
+            return Results.BadRequest("أسعار الشراء والبيع يجب أن تكون أكبر من صفر");
+        }
+
+        if (fxRate.BuyRate >= fxRate.SellRate)
+        {
+            return Results.BadRequest("سعر الشراء يجب أن يكون أقل من سعر البيع");
+        }
+
+        // تحديث الحقول
+        existing.Currency = fxRate.Currency.ToUpper();
+        existing.BuyRate = fxRate.BuyRate;
+        existing.SellRate = fxRate.SellRate;
+        existing.Notes = fxRate.Notes;
+        existing.CashierId = fxRate.CashierId;
+        existing.LastModifiedAt = DateTime.Now;
+
+        await fxDb.SaveChangesAsync();
+        return Results.Ok(existing);
+    }
+    catch (Exception ex)
+    {
+        Console.WriteLine($"خطأ في تحديث سعر صرف العملة: {ex.Message}");
+        return Results.Problem($"خطأ في تحديث سعر صرف العملة: {ex.Message}");
+    }
+})
+.WithName("UpdateFxExchangeRate")
+.WithOpenApi();
+
+// حذف سعر صرف عملة
+app.MapDelete("/fx-exchange-rates/{id:int}", async (int id, FxDbContext fxDb) =>
+{
+    try
+    {
+        var fxRate = await fxDb.FxExchangeRates.FindAsync(id);
+        if (fxRate is null) return Results.NotFound("سعر الصرف غير موجود");
+
+        fxDb.FxExchangeRates.Remove(fxRate);
+        await fxDb.SaveChangesAsync();
+        return Results.Ok(new { message = "تم حذف سعر الصرف بنجاح" });
+    }
+    catch (Exception ex)
+    {
+        Console.WriteLine($"خطأ في حذف سعر صرف العملة: {ex.Message}");
+        return Results.Problem($"خطأ في حذف سعر صرف العملة: {ex.Message}");
+    }
+})
+.WithName("DeleteFxExchangeRate")
+.WithOpenApi();
+
+// ==================== عمليات تبديل العملات (شراء/بيع) ====================
+
+// إنشاء عملية تبديل عملة جديدة
+app.MapPost("/currency-exchanges", async (CurrencyExchange exchange, ApplicationDbContext db) =>
+{
+    try
+    {
+        // التحقق من وجود الصندوق
+        var cashier = await db.Users.FindAsync(exchange.CashierId);
+        if (cashier == null)
+        {
+            return Results.BadRequest("الصندوق غير موجود");
+        }
+
+        // حساب المبلغ بالدينار الأردني
+        exchange.JodAmount = exchange.ForeignAmount * exchange.ExchangeRate;
+        exchange.CreatedAt = DateTime.UtcNow;
+
+        // تحديث رصيد الصندوق حسب نوع العملية
+        if (exchange.Type == ExchangeType.Buy)
+        {
+            // الصندوق يشتري عملة من العميل: يدفع دنانير للعميل (خصم من الرصيد)
+            cashier.Balance -= exchange.JodAmount;
+        }
+        else if (exchange.Type == ExchangeType.Sell)
+        {
+            // الصندوق يبيع عملة للعميل: يستلم دنانير من العميل (إضافة للرصيد)
+            cashier.Balance += exchange.JodAmount;
+        }
+
+        cashier.LastBalanceUpdate = DateTime.UtcNow;
+
+        // توليد رقم مرجعي لعملية الصرف
+        exchange.Reference = GenerateReference("CE", exchange.CreatedAt);
+        Console.WriteLine($"🔍 Generated reference: {exchange.Reference}");
+
+        db.CurrencyExchanges.Add(exchange);
+        await db.SaveChangesAsync();
+
+        // إعادة جلب العملية مع بيانات الصندوق
+        var created = await db.CurrencyExchanges
+            .Include(ce => ce.Cashier)
+            .FirstOrDefaultAsync(ce => ce.Id == exchange.Id);
+
+        Console.WriteLine($"🔍 Returning reference: {created?.Reference}");
+        return Results.Created($"/currency-exchanges/{exchange.Id}", created);
+    }
+    catch (Exception ex)
+    {
+        return Results.Problem($"خطأ في حفظ العملية: {ex.Message}");
+    }
+})
+.WithName("CreateCurrencyExchange")
+.WithOpenApi();
+
+// جلب عمليات تبديل العملات
+app.MapGet("/currency-exchanges", async (ApplicationDbContext db) =>
+{
+    var query = db.CurrencyExchanges
+        .Include(ce => ce.Cashier)
+        .OrderByDescending(ce => ce.CreatedAt);
+    return Results.Ok(await query.ToListAsync());
+})
+.WithName("GetCurrencyExchanges")
+.WithOpenApi();
+
+// جلب عمليات تبديل العملات لصندوق معين
+app.MapGet("/currency-exchanges/cashier/{cashierId:int}", async (int cashierId, ApplicationDbContext db) =>
+{
+    try
+    {
+        var exchanges = await db.CurrencyExchanges
+            .Include(ce => ce.Cashier)
+            .Where(ce => ce.CashierId == cashierId)
+            .OrderByDescending(ce => ce.CreatedAt)
+            .Select(ce => new
+            {
+                ce.Id,
+                ce.Type,
+                ce.Currency,
+                ce.ForeignAmount,
+                ce.ExchangeRate,
+                ce.JodAmount,
+                ce.Profit,
+                ce.CustomerNationalId,
+                ce.CustomerName,
+                ce.CustomerPhone,
+                ce.CreatedAt,
+                ce.Notes,
+                ce.Country
+            })
+            .ToListAsync();
+
+        var buyCount = exchanges.Count(e => e.Type == ExchangeType.Buy);
+        var sellCount = exchanges.Count(e => e.Type == ExchangeType.Sell);
+
+        Console.WriteLine($"الصندوق {cashierId}: إجمالي العمليات = {exchanges.Count}, عمليات الشراء = {buyCount}, عمليات البيع = {sellCount}");
+
+        return Results.Ok(new
+        {
+            TotalCount = exchanges.Count,
+            BuyCount = buyCount,
+            SellCount = sellCount,
+            Exchanges = exchanges
+        });
+    }
+    catch (Exception ex)
+    {
+        Console.WriteLine($"خطأ في جلب عمليات الصندوق {cashierId}: {ex.Message}");
+        return Results.Problem($"خطأ في جلب عمليات الصندوق: {ex.Message}");
+    }
+})
+.WithName("GetCashierCurrencyExchanges")
+.WithOpenApi();
+
+// البحث في عمليات تبديل العملات بالاسم أو الرقم الوطني أو الرقم المرجعي
+app.MapGet("/currency-exchanges/search", async (string? q, string? fromDate, string? toDate, ApplicationDbContext db) =>
+{
+    var query = db.CurrencyExchanges
+        .Include(ce => ce.Cashier)
+        .AsQueryable();
+
+    // فلتر البحث النصي
+    if (!string.IsNullOrWhiteSpace(q))
+    {
+        q = q.Trim();
+        var lowered = q.ToLower(CultureInfo.InvariantCulture);
+        query = query.Where(ce =>
+            ce.Reference.Contains(q) ||
+            (ce.CustomerNationalId != null && ce.CustomerNationalId.Contains(q)) ||
+            (ce.CustomerName != null && ce.CustomerName.ToLower().Contains(lowered))
+        );
+    }
+
+    // فلتر التاريخ (من)
+    if (!string.IsNullOrWhiteSpace(fromDate))
+    {
+        var formats = new[] { "yyyy-MM-dd", "yyyy/MM/dd", "MM/dd/yyyy" };
+        if (DateTime.TryParseExact(fromDate, formats, CultureInfo.InvariantCulture, DateTimeStyles.None, out var from))
+        {
+            query = query.Where(ce => ce.CreatedAt >= from);
+        }
+    }
+
+    // فلتر التاريخ (إلى)
+    if (!string.IsNullOrWhiteSpace(toDate))
+    {
+        var formats = new[] { "yyyy-MM-dd", "yyyy/MM/dd", "MM/dd/yyyy" };
+        if (DateTime.TryParseExact(toDate, formats, CultureInfo.InvariantCulture, DateTimeStyles.None, out var to))
+        {
+            // إضافة يوم كامل للتاريخ النهائي لتضمين كل اليوم
+            var toEndOfDay = to.AddDays(1);
+            query = query.Where(ce => ce.CreatedAt < toEndOfDay);
+        }
+    }
+
+    var results = await query
+        .OrderByDescending(ce => ce.CreatedAt)
+        .Select(ce => new
+        {
+            ce.Id,
+            ce.Reference,
+            ce.Type,
+            ce.Currency,
+            ce.ForeignAmount,
+            ce.ExchangeRate,
+            ce.JodAmount,
+            ce.Profit,
+            ce.CustomerNationalId,
+            ce.CustomerName,
+            ce.CustomerPhone,
+            ce.CreatedAt,
+            ce.Notes,
+            ce.Country,
+            Cashier = ce.Cashier != null ? new
+            {
+                ce.Cashier.Id,
+                ce.Cashier.Name,
+                ce.Cashier.Username
+            } : null
+        })
+        .ToListAsync();
+
+    return Results.Ok(results);
+})
+.WithName("SearchCurrencyExchanges")
+.WithOpenApi();
+
+// حذف عملية تبديل عملة
+app.MapDelete("/currency-exchanges/{id:int}", async (int id, ApplicationDbContext db) =>
+{
+    var exchange = await db.CurrencyExchanges
+        .Include(ce => ce.Cashier)
+        .FirstOrDefaultAsync(ce => ce.Id == id);
+
+    if (exchange == null)
+    {
+        return Results.NotFound("العملية غير موجودة");
+    }
+
+    // إرجاع الرصيد للصندوق
+    if (exchange.Cashier != null)
+    {
+        if (exchange.Type == ExchangeType.Buy)
+        {
+            // كانت عملية شراء (خصم من الرصيد) -> نضيف الرصيد عند الحذف
+            exchange.Cashier.Balance += exchange.JodAmount;
+        }
+        else if (exchange.Type == ExchangeType.Sell)
+        {
+            // كانت عملية بيع (إضافة للرصيد) -> نخصم الرصيد عند الحذف
+            exchange.Cashier.Balance -= exchange.JodAmount;
+        }
+        exchange.Cashier.LastBalanceUpdate = DateTime.UtcNow;
+    }
+
+    db.CurrencyExchanges.Remove(exchange);
+    await db.SaveChangesAsync();
+
+    return Results.Ok(new { message = "تم حذف العملية بنجاح" });
+})
+.WithName("DeleteCurrencyExchange")
+.WithOpenApi();
+
+// إحصائيات عمليات تبديل العملات
+app.MapGet("/currency-exchanges/statistics", async (ApplicationDbContext db, int? cashierId = null) =>
+{
+    var query = db.CurrencyExchanges.AsQueryable();
+
+    if (cashierId.HasValue)
+    {
+        query = query.Where(ce => ce.CashierId == cashierId.Value);
+    }
+
+    var stats = new
+    {
+        TotalOperations = await query.CountAsync(),
+        BuyOperations = await query.CountAsync(ce => ce.Type == ExchangeType.Buy),
+        SellOperations = await query.CountAsync(ce => ce.Type == ExchangeType.Sell),
+        TotalProfit = await query.SumAsync(ce => (decimal?)ce.Profit) ?? 0m,
+        TotalJodAmount = await query.SumAsync(ce => (decimal?)ce.JodAmount) ?? 0m
+    };
+
+    return Results.Ok(stats);
+})
+.WithName("GetCurrencyExchangeStatistics")
 .WithOpenApi();
 
 app.Run();

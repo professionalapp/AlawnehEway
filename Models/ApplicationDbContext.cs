@@ -15,6 +15,7 @@ namespace AlawnehEway.Models
         public DbSet<RemittanceChangeRequest> RemittanceChangeRequests { get; set; }
         public DbSet<ExchangeRate> ExchangeRates { get; set; }
         public DbSet<FeeTier> FeeTiers { get; set; }
+        public DbSet<CurrencyExchange> CurrencyExchanges { get; set; }
 
         protected override void OnModelCreating(ModelBuilder modelBuilder)
         {
@@ -35,6 +36,10 @@ namespace AlawnehEway.Models
             modelBuilder.Entity<Remittance>()
                 .HasIndex(r => r.Reference)
                 .IsUnique(false);
+
+            modelBuilder.Entity<ExchangeRate>()
+                .HasIndex(er => new { er.Country, er.Scope })
+                .IsUnique();
         }
     }
 }

@@ -251,9 +251,14 @@
         }
 
         .alert-success {
-            background-color: #efe;
-            color: #3c3;
-            border: 1px solid #cfc;
+            background-color: transparent;
+            color: #28a745;
+            border: none;
+            padding: 0;
+            margin-top: 15px;
+            text-align: center;
+            font-weight: bold;
+            font-size: 16px;
         }
 
         .remember-forgot {
@@ -428,6 +433,8 @@
                 <button type="submit" class="btn-login" id="loginBtn">
                     <i class="fas fa-sign-in-alt"></i> تسجيل الدخول
                 </button>
+                
+                <div id="successMessage" class="alert alert-success" style="display: none;"></div>
             </form>
 
         </div>
@@ -437,6 +444,7 @@
         const API_BASE = '';
         const loginForm = document.getElementById('loginForm');
         const alertBox = document.getElementById('alertBox');
+        const successMessage = document.getElementById('successMessage');
         const loginBtn = document.getElementById('loginBtn');
         const togglePassword = document.getElementById('togglePassword');
         const passwordInput = document.getElementById('password');
@@ -462,20 +470,78 @@
 
         // عرض رسالة
         function showAlert(message, type = 'error') {
-            alertBox.textContent = message;
-            alertBox.className = `alert alert-${type}`;
-            alertBox.style.display = 'block';
-
             if (type === 'success') {
+                // تشغيل صوت الترحيب
+                playWelcomeSound();
+                
+                // إخفاء رسائل الخطأ
+                alertBox.style.display = 'none';
+                // عرض رسالة النجاح أسفل الزر
+                successMessage.textContent = message;
+                successMessage.style.display = 'block';
                 setTimeout(() => {
-                    alertBox.style.display = 'none';
+                    successMessage.style.display = 'none';
                 }, 3000);
+            } else {
+                // إخفاء رسالة النجاح
+                successMessage.style.display = 'none';
+                // عرض رسالة الخطأ في الأعلى
+                alertBox.textContent = message;
+                alertBox.className = `alert alert-${type}`;
+                alertBox.style.display = 'block';
+            }
+        }
+
+        // تشغيل صوت الترحيب
+        function playWelcomeSound() {
+            try {
+                const audio = new Audio('sound/welcome.mp3');
+                audio.volume = 0.7; // مستوى الصوت (0.0 إلى 1.0)
+                audio.preload = 'auto'; // تحميل الصوت مسبقاً
+                
+                // ضمان استمرار تشغيل الصوت حتى النهاية
+                audio.addEventListener('ended', function() {
+                    console.log('انتهى تشغيل الصوت');
+                });
+                
+                // منع إيقاف الصوت عند تغيير الصفحة
+                audio.addEventListener('pause', function() {
+                    if (!audio.ended) {
+                        console.log('محاولة استكمال تشغيل الصوت...');
+                        audio.play();
+                    }
+                });
+                
+                // منع إيقاف الصوت عند فقدان التركيز
+                audio.addEventListener('suspend', function() {
+                    if (!audio.ended) {
+                        console.log('استكمال تشغيل الصوت بعد التعليق...');
+                        audio.play();
+                    }
+                });
+                
+                // حفظ مرجع الصوت في المتصفح لضمان استمرار التشغيل
+                window.welcomeAudio = audio;
+                
+                // تشغيل الصوت
+                const playPromise = audio.play();
+                if (playPromise !== undefined) {
+                    playPromise.then(() => {
+                        console.log('تم تشغيل الصوت بنجاح');
+                    }).catch(error => {
+                        console.log('لا يمكن تشغيل الصوت:', error);
+                    });
+                }
+                
+            } catch (error) {
+                console.log('خطأ في تشغيل الصوت:', error);
             }
         }
 
         // إخفاء الرسالة
         function hideAlert() {
             alertBox.style.display = 'none';
+            successMessage.style.display = 'none';
         }
 
         // التعامل مع نسيان كلمة المرور
@@ -533,7 +599,7 @@
                     const deptLc = (data.department || '').toLowerCase();
                     const isCompliance = roleLc === 'compliance' || deptLc === 'compliance' || deptLc === 'الالتزام';
                     const target = isCompliance ? 'compliance.html' : 'index.html';
-                    setTimeout(() => { window.location.href = target; }, 1000);
+                    setTimeout(() => { window.location.href = target; }, 3000);
                 } else if (response.status === 401 || response.status === 403) {
                     // محاولة استخراج رسالة الخطأ من الاستجابة
                     try {
@@ -572,7 +638,7 @@
                 showAlert(`مرحباً ${username}، أنت مسجل دخولك بالفعل. جاري ال...`, 'success');
                 setTimeout(() => {
                     window.location.href = 'index.html';
-                }, 1500);
+                }, 3000);
             }
         });
 
