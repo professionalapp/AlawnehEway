@@ -6,7 +6,7 @@
     <title>سحب حوالة - Alawneh-Eway</title>
     <link rel="stylesheet" href="css/style.css">
     <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
-    <script src="js/countries.js"></script>
+    <script src="js/countries.js?v=2"></script>
     <style>
         .form-row { display: flex; gap: 10px; }
         .form-row input { flex: 1; font-size: 18px; padding: 12px; }
@@ -29,8 +29,9 @@
             if (!reference || reference.trim() === '') {
                 return 'الرقم المرجعي مطلوب';
             }
-            if (!/^\d{13}$/.test(reference.trim())) {
-                return 'الرقم المرجعي يجب أن يكون 13 رقم';
+            // قبول تنسيق الرقم المرجعي: RM-YYYYMMDD-HHMMSS-XXX أو أي تنسيق يحتوي على RM-
+            if (!reference.trim().startsWith('RM-')) {
+                return 'تنسيق الرقم المرجعي غير صحيح. يجب أن يبدأ بـ RM-';
             }
             return null;
         }
@@ -47,18 +48,37 @@
             }
             
             try {
-                const res = await fetch(`${API_BASE_URL}/remittances/by-ref/${encodeURIComponent(ref)}`);
+                console.log('البحث عن الحوالة بالرقم المرجعي:', ref);
+                console.log('URL المطلوب:', `${API_BASE_URL}/remittances/by-ref/${encodeURIComponent(ref)}`);
+                
+                const res = await fetch(`${API_BASE_URL}/remittances/by-ref/${encodeURIComponent(ref)}`, {
+                    method: 'GET',
+                    headers: {
+                        'Accept': 'application/json',
+                        'Content-Type': 'application/json'
+                    }
+                });
+                
+                console.log('استجابة الخادم:', res.status, res.statusText);
+                
                 if (!res.ok) { 
-                    alert('لم يتم العثور على حوالة بهذا الرقم المرجعي'); 
+                    if (res.status === 404) {
+                        alert('لم يتم العثور على حوالة بهذا الرقم المرجعي'); 
+                    } else {
+                        const errorText = await res.text();
+                        console.error('خطأ من الخادم:', errorText);
+                        alert('خطأ في الخادم: ' + res.status + ' - ' + errorText);
+                    }
                     render(null); 
                     return; 
                 }
                 const r = await res.json();
+                console.log('بيانات الحوالة المستلمة:', r);
                 current = r;
                 render(r);
             } catch (error) {
                 console.error('خطأ في البحث:', error);
-                alert('خطأ في الاتصال بالخادم');
+                alert('خطأ في الاتصال بالخادم: ' + error.message);
                 render(null);
             }
         }
@@ -137,10 +157,12 @@
             if (!current) { alert('ابحث عن حوالة أولاً'); return; }
             if (current.status === 'Paid') { alert('هذه الحوالة مدفوعة بالفعل'); return; }
             
-            // التحقق من حالة قيد الموافقة
+            // التحقق من حالة قيد الموافقة - السماح بسحب الحوالات المصادق عليها
             if (current.status === 'Pending Approval') {
-                alert('⚠️ لا يمكن سحب هذه الحوالة!\n\nهذه الحوالة يوجد عليها مصادقة (قيد الموافقة).\n\nيرجى انتظار اعتماد أو رفض الطلب من قبل الإدارة.');
-                return;
+                // السماح بسحب الحوالات المصادق عليها مع تحذير
+                if (!confirm('⚠️ هذه الحوالة مصادق عليها (قيد الموافقة).\n\nهل أنت متأكد من سحبها؟\n\nسيتم تغيير الحالة إلى "مدفوعة".')) {
+                    return;
+                }
             }
 
             // Confirmation dialog
@@ -157,17 +179,43 @@
             // الحصول على معرف الصندوق المسجل دخوله (المستقبل)
             const currentUserId = localStorage.getItem('userId') || sessionStorage.getItem('userId');
             
-            const res = await fetch(`${API_BASE_URL}/remittances/mark-paid?reference=${encodeURIComponent(current.reference)}&receiverUserId=${currentUserId || ''}`, { method: 'POST' });
-            if (!res.ok) { alert('فشل التحديث'); return; }
+            if (!currentUserId) {
+                alert('خطأ: لم يتم العثور على معرف المستخدم. يرجى تسجيل الدخول مرة أخرى.');
+                return;
+            }
+            
+            console.log('معرف المستخدم الحالي:', currentUserId);
+            console.log('الرقم المرجعي:', current.reference);
+            
+            const res = await fetch(`${API_BASE_URL}/remittances/mark-paid?reference=${encodeURIComponent(current.reference)}&receiverUserId=${currentUserId}`, { 
+                method: 'POST',
+                headers: {
+                    'Accept': 'application/json',
+                    'Content-Type': 'application/json'
+                }
+            });
+            
+            console.log('استجابة سحب الحوالة:', res.status, res.statusText);
+            
+            if (!res.ok) { 
+                const errorText = await res.text();
+                console.error('خطأ في سحب الحوالة:', errorText);
+                alert('فشل التحديث: ' + errorText);
+                return; 
+            }
             
             const r = await res.json();
             current = r; 
             render(r); 
+            const statusChange = current.status === 'Pending Approval' ? 
+                'تم تغيير الحالة من "قيد الموافقة" إلى "مدفوعة"' : 
+                'تم تغيير الحالة إلى "مدفوعة"';
+                
             alert('✅ تم السحب بنجاح!\n\n' +
                   '📋 تفاصيل العملية:\n' +
                   `• الرقم المرجعي: ${current.reference}\n` +
                   `• المبلغ: ${r.amount.toFixed(2)} د.أ\n` +
-                  `• الحالة الجديدة: مدفوعة\n` +
+                  `• ${statusChange}\n` +
                   `• تاريخ السحب: ${new Date().toLocaleString('ar-SA')}\n\n` +
                   'سيتم طباعة الإيصال الآن.');
             printReceipt(r, 'withdraw');

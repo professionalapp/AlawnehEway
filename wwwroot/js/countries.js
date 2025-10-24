@@ -5,7 +5,32 @@ const COUNTRIES = [
     { value: "Saudi Arabia", label: "السعودية", currency: "SAR" },
     { value: "UAE", label: "الإمارات", currency: "AED" },
     { value: "Turkey", label: "تركيا", currency: "TRY" },
-    { value: "Egypt", label: "مصر", currency: "EGP" }
+    { value: "Egypt", label: "مصر", currency: "EGP" },
+    { value: "Lebanon", label: "لبنان", currency: "LBP" },
+    { value: "Syria", label: "سوريا", currency: "SYP" },
+    { value: "Iraq", label: "العراق", currency: "IQD" },
+    { value: "Palestine", label: "فلسطين", currency: "ILS" },
+    { value: "Kuwait", label: "الكويت", currency: "KWD" },
+    { value: "Qatar", label: "قطر", currency: "QAR" },
+    { value: "Bahrain", label: "البحرين", currency: "BHD" },
+    { value: "Oman", label: "عمان", currency: "OMR" },
+    { value: "Yemen", label: "اليمن", currency: "YER" },
+    { value: "Sudan", label: "السودان", currency: "SDG" },
+    { value: "Morocco", label: "المغرب", currency: "MAD" },
+    { value: "Algeria", label: "الجزائر", currency: "DZD" },
+    { value: "Tunisia", label: "تونس", currency: "TND" },
+    { value: "Libya", label: "ليبيا", currency: "LYD" },
+    { value: "Pakistan", label: "باكستان", currency: "PKR" },
+    { value: "India", label: "الهند", currency: "INR" },
+    { value: "Bangladesh", label: "بنغلاديش", currency: "BDT" },
+    { value: "Philippines", label: "الفلبين", currency: "PHP" },
+    { value: "Sri Lanka", label: "سريلانكا", currency: "LKR" },
+    { value: "Nepal", label: "نيبال", currency: "NPR" },
+    { value: "Ethiopia", label: "إثيوبيا", currency: "ETB" },
+    { value: "Somalia", label: "الصومال", currency: "SOS" },
+    { value: "Kenya", label: "كينيا", currency: "KES" },
+    { value: "Ghana", label: "غانا", currency: "GHS" },
+    { value: "Nigeria", label: "نيجيريا", currency: "NGN" }
 ];
 
 // دالة لملء dropdown الدول

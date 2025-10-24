@@ -42,6 +42,7 @@ async function loadUsers() {
 // عرض المستخدمين في الصفحة
 function displayUsers(usersList) {
     const usersListContainer = document.getElementById('usersList');
+    if (!usersListContainer) return; // إضافة فحص للتأكد من وجود العنصر
     
     if (!usersList || usersList.length === 0) {
         usersListContainer.innerHTML = `
@@ -142,6 +143,7 @@ async function handleAddUser(event) {
 // عرض رسالة للمستخدم
 function showMessage(message, type = 'success') {
     const messageContainer = document.getElementById('messageContainer');
+    if (!messageContainer) return; // إضافة فحص للتأكد من وجود العنصر
     const messageElement = document.createElement('div');
     messageElement.className = `message ${type}`;
     messageElement.innerHTML = `
@@ -161,6 +163,7 @@ function showMessage(message, type = 'success') {
 // عرض مؤشر التحميل
 function showLoading() {
     const usersListContainer = document.getElementById('usersList');
+    if (!usersListContainer) return; // إضافة فحص للتأكد من وجود العنصر
     usersListContainer.innerHTML = `
         <div class="loading">
             <i class="fas fa-spinner fa-spin"></i>

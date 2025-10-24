@@ -16,12 +16,12 @@ namespace AlawnehEway.Models
         // نوع العملية: شراء أو بيع
         public ExchangeType Type { get; set; }
 
-        // العملة الأجنبية
+        // العملة 
         [Required]
         [MaxLength(10)]
         public string Currency { get; set; } = "USD";
 
-        // المبلغ بالعملة الأجنبية
+        // المبلغ بالعملة 
         [Precision(18, 2)]
         [Range(0.01, double.MaxValue)]
         public decimal ForeignAmount { get; set; }

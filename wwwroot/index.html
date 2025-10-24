@@ -246,7 +246,7 @@
                     <!-- خيارات للمدير فقط -->
                     <a href="remittances_list.html" class="nav-item btn btn-primary admin-only" style="display: none;">
                         <i class="fas fa-list"></i>
-                        <span>قائمة الحوالات</span>
+                        <span>الحركات</span>
                     </a>
                     <a href="approvals.html" class="nav-item btn btn-primary admin-only" style="display: none;">
                         <i class="fas fa-check-circle"></i>
@@ -270,7 +270,7 @@
                     </a>
                     <a href="cashiers.html" class="nav-item btn btn-primary admin-only" style="display: none;">
                         <i class="fas fa-cash-register"></i>
-                        <span>إدارة الصناديق</span>
+                        <span>إدارة</span>
                     </a>
                 </div>
             </div>
@@ -300,6 +300,8 @@
             const name = localStorage.getItem('name') || sessionStorage.getItem('name');
             const role = localStorage.getItem('role') || sessionStorage.getItem('role');
             const department = localStorage.getItem('department') || sessionStorage.getItem('department');
+
+            
             
             // عرض الاسم
             document.getElementById('userName').textContent = name || username;
@@ -320,7 +322,7 @@
             // عرض القسم
             document.getElementById('userDepartment').textContent = department || 'غير محدد';
             
-            // عرض معرف المستخدم/الصندوق
+            // عرض معرف المستخدم
             document.getElementById('userIdText').textContent = username;
             
             // تم حذف الدائرة - لا حاجة لملء أول حرف
@@ -343,7 +345,7 @@
                     link.style.display = 'block';
                 });
                 
-                // التأكد من إظهار خيارات الصندوق أيضاً للمدير
+                // التأكد من إظهار خيارات المستخدم أيضاً للمدير
                 const cashierOptions = document.querySelectorAll('.cashier-option');
                 cashierOptions.forEach(link => {
                     link.style.display = 'block';
@@ -351,7 +353,7 @@
                 
                 console.log('تم تسجيل دخول المدير - جميع الخيارات متاحة');
             } else {
-                // فرع مستخدم الالتزام: حصر الخيارات بـ صفحة الالتزام وقائمة الحوالات فقط
+                // فرع مستخدم الالتزام: حصر الخيارات بـ صفحة الالتزام والحركات فقط
                 const dept = (department || '').toLowerCase();
                 const roleLc = (role || '').toLowerCase();
                 const isCompliance = dept === 'compliance' || dept === 'الالتزام' || roleLc === 'compliance';
@@ -364,7 +366,7 @@
                 });
 
                 if (isCompliance) {
-                    // إظهار فقط: الالتزام + قائمة الحوالات
+                    // إظهار فقط: الالتزام + الحركات
                     const complianceLink = document.querySelector('a[href="compliance.html"]');
                     const listLink = document.querySelector('a[href="remittances_list.html"]');
                     if (complianceLink) {
@@ -375,15 +377,15 @@
                         listLink.style.setProperty('display', 'block', 'important');
                         listLink.style.visibility = 'visible';
                     }
-                    console.log('تم تسجيل دخول مستخدم الالتزام - عرض الالتزام وقائمة الحوالات فقط');
+                    console.log('تم تسجيل دخول مستخدم الالتزام - عرض الالتزام والحركات فقط');
                 } else {
-                    // الصناديق ترى فقط الخيارات الأساسية
+                    // المستخدمون يرون فقط الخيارات الأساسية
                     const cashierOptions = document.querySelectorAll('.cashier-option');
                     cashierOptions.forEach(link => {
                         link.style.setProperty('display', 'block', 'important');
                         link.style.visibility = 'visible';
                     });
-                    console.log('تم تسجيل دخول الصندوق - الخيارات الأساسية فقط');
+                    console.log('تم تسجيل دخول المستخدم - الخيارات الأساسية فقط');
                 }
             }
             

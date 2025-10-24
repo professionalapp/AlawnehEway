@@ -6,7 +6,7 @@
     <title>إرسال حوالة - Alawneh-Eway</title>
     <link rel="stylesheet" href="css/style.css">
     <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
-    <script src="js/countries.js"></script>
+    <script src="js/countries.js?v=2"></script>
     <style>
         .fee-box { background: transparent; padding: 10px; color: #6c757d; }
         .remittances-fee-box { 
@@ -27,9 +27,28 @@
             font-weight: normal; 
         }
         .grid-2 { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; }
-        .results { max-height: 200px; overflow: auto; border: 1px solid #ddd; border-radius: 6px; }
-        .results div { padding: 8px 10px; cursor: pointer; color: #6c757d; }
-        .results div:hover { background: #f0f0f0; }
+        .results { 
+            max-height: 200px; 
+            overflow: auto; 
+            border: 1px solid #ddd; 
+            border-radius: 6px; 
+            background: white;
+            margin-top: 5px;
+        }
+        .results div { 
+            padding: 8px 10px; 
+            cursor: pointer; 
+            color: #6c757d; 
+            border-bottom: 1px solid #eee;
+            transition: background-color 0.2s;
+        }
+        .results div:hover { 
+            background: #f8f9fa; 
+            color: #495057;
+        }
+        .results div:last-child {
+            border-bottom: none;
+        }
         .form-group label { color: #ffffff; }
         .form-group input, .form-group select { font-size: 18px; padding: 12px; }
         .card h2 { color: #ffffff; }
@@ -143,16 +162,42 @@
 
         async function search(kind) {
             const q = document.getElementById(kind + 'Query').value.trim();
-            if (!q) { document.getElementById(kind + 'Results').innerHTML = ''; return; }
-            const res = await fetch(`${API_BASE_URL}/parties/search?q=${encodeURIComponent(q)}`);
-            const list = res.ok ? await res.json() : [];
             const container = document.getElementById(kind + 'Results');
-            container.innerHTML = list.map(p => `
-                <div onclick="selectParty('${kind}', ${p.id}, '${p.nameAr.replace(/'/g, "\'")}','${p.nameEn.replace(/'/g, "\'")}', '${p.nationalId}')">
-                    ${p.nameAr}<br>
-                    <small>${p.nameEn} · ${p.nationalId} · ${p.phoneNumber}</small>
-                </div>
-            `).join('');
+            
+            if (!q) { 
+                container.innerHTML = ''; 
+                return; 
+            }
+            
+            try {
+                console.log(`البحث عن ${kind}:`, q);
+                const res = await fetch(`${API_BASE_URL}/parties/search?q=${encodeURIComponent(q)}`);
+                console.log('استجابة البحث:', res.status, res.statusText);
+                
+                if (!res.ok) {
+                    console.error('خطأ في البحث:', res.status, res.statusText);
+                    container.innerHTML = '<div style="color: #dc3545; padding: 10px;">خطأ في البحث</div>';
+                    return;
+                }
+                
+                const list = await res.json();
+                console.log('نتائج البحث:', list);
+                
+                if (!list || list.length === 0) {
+                    container.innerHTML = '<div style="color: #6c757d; padding: 10px;">لا توجد نتائج</div>';
+                    return;
+                }
+                
+                container.innerHTML = list.map(p => `
+                    <div onclick="selectParty('${kind}', ${p.id}, '${p.nameAr.replace(/'/g, "\\'")}','${p.nameEn.replace(/'/g, "\\'")}', '${p.nationalId}')" style="cursor: pointer; padding: 8px; border-bottom: 1px solid #eee;">
+                        <strong>${p.nameAr}</strong><br>
+                        <small style="color: #6c757d;">${p.nameEn} · ${p.nationalId} · ${p.phoneNumber || 'لا يوجد رقم'}</small>
+                    </div>
+                `).join('');
+            } catch (error) {
+                console.error('خطأ في البحث:', error);
+                container.innerHTML = '<div style="color: #dc3545; padding: 10px;">خطأ في الاتصال بالخادم</div>';
+            }
         }
 
         function selectParty(kind, id, nameAr, nameEn, nationalId) {
@@ -265,16 +310,21 @@
 
         async function updateFee() {
             const amount = parseFloat(document.getElementById('amount').value || '0');
+            const paidAmount = parseFloat(document.getElementById('paidAmount').value || '0');
             const country = document.getElementById('country').value;
             const feeEl = document.getElementById('fee');
             const rateEl = document.getElementById('rate');
             const totalEl = document.getElementById('total');
+            const paidEl = document.getElementById('paid');
+            const balanceEl = document.getElementById('balance');
             const convEl = document.getElementById('converted');
             const ccyEl = document.getElementById('ccy');
             if (isNaN(amount) || amount < 0 || !country) {
                 if (feeEl) feeEl.textContent = '—';
                 if (rateEl) rateEl.textContent = '—';
                 if (totalEl) totalEl.textContent = '—';
+                if (paidEl) paidEl.textContent = '—';
+                if (balanceEl) balanceEl.textContent = '—';
                 if (convEl) convEl.textContent = '—';
                 if (ccyEl) ccyEl.textContent = '';
                 return;
@@ -301,6 +351,26 @@
                 const total = amount + fee;
                 if (totalEl) totalEl.textContent = total.toFixed(2);
 
+                // المبلغ المدفوع من العميل
+                if (paidEl) paidEl.textContent = paidAmount.toFixed(2);
+
+                // الباقي المطلوب = الإجمالي - المبلغ المدفوع
+                const balance = total - paidAmount;
+                if (balanceEl) {
+                    balanceEl.textContent = balance.toFixed(2);
+                    // تغيير لون الباقي حسب القيمة
+                    if (balance > 0) {
+                        balanceEl.style.color = '#dc3545'; // أحمر للباقي المطلوب
+                    } else if (balance < 0) {
+                        balanceEl.style.color = '#28a745'; // أخضر للزيادة
+                    } else {
+                        balanceEl.style.color = '#6c757d'; // رمادي للمساواة
+                    }
+                }
+
+                // إظهار رسالة تحذيرية إذا كان المبلغ المدفوع أقل من الإجمالي
+                showPaymentWarning(paidAmount, total, balance);
+
                 // مبلغ الحوالة بالعملة = amount / rate (إذا كان السعر > 0)
                 if (rate && rate > 0) {
                     const converted = amount / rate;
@@ -314,8 +384,70 @@
                 if (feeEl) feeEl.textContent = '—';
                 if (rateEl) rateEl.textContent = '—';
                 if (totalEl) totalEl.textContent = '—';
+                if (paidEl) paidEl.textContent = '—';
+                if (balanceEl) balanceEl.textContent = '—';
                 if (convEl) convEl.textContent = '—';
                 if (ccyEl) ccyEl.textContent = '';
+            }
+        }
+
+        // دالة لإظهار تحذير المبلغ المدفوع
+        function showPaymentWarning(paidAmount, total, balance) {
+            // إزالة أي تحذيرات سابقة
+            const existingWarning = document.getElementById('paymentWarning');
+            if (existingWarning) {
+                existingWarning.remove();
+            }
+
+            // إظهار التحذير أو الإشعار حسب حالة المبلغ
+            if (paidAmount > 0) {
+                const warningDiv = document.createElement('div');
+                warningDiv.id = 'paymentWarning';
+                warningDiv.style.cssText = `
+                    color: #dc3545;
+                    padding: 12px;
+                    margin-top: 10px;
+                    font-size: 14px;
+                    display: flex;
+                    align-items: center;
+                    gap: 8px;
+                `;
+                
+                if (balance > 0) {
+                    // المبلغ المدفوع أقل من الإجمالي - باقي مطلوب
+                    warningDiv.innerHTML = `
+                        <i class="fas fa-exclamation-triangle" style="color: #dc3545;"></i>
+                        <div>
+                            <strong>تنبيه:</strong> المبلغ المدفوع (${paidAmount.toFixed(2)} د.أ) أقل من الإجمالي (${total.toFixed(2)} د.أ)
+                            <br>
+                            <span style="color: #dc3545; font-weight: bold;">الباقي المطلوب: ${balance.toFixed(2)} د.أ</span>
+                        </div>
+                    `;
+                } else if (balance < 0) {
+                    // المبلغ المدفوع أكثر من الإجمالي - إرجاع للعميل
+                    warningDiv.style.color = '#28a745'; // أخضر للإرجاع
+                    warningDiv.innerHTML = `
+                        <i class="fas fa-undo" style="color: #28a745;"></i>
+                        <div>
+                            <strong>إرجاع للعميل:</strong> المبلغ المدفوع (${paidAmount.toFixed(2)} د.أ) أكثر من الإجمالي (${total.toFixed(2)} د.أ)
+                            <br>
+                            <span style="color: #28a745; font-weight: bold;">مبلغ الإرجاع: ${Math.abs(balance).toFixed(2)} د.أ</span>
+                        </div>
+                    `;
+                } else {
+                    // المبلغ المدفوع مساوي للإجمالي - لا توجد رسالة
+                    const existingWarning = document.getElementById('paymentWarning');
+                    if (existingWarning) {
+                        existingWarning.remove();
+                    }
+                    return;
+                }
+                
+                // إدراج التحذير بعد صندوق الحسابات
+                const calcBox = document.getElementById('calcBox');
+                if (calcBox) {
+                    calcBox.parentNode.insertBefore(warningDiv, calcBox.nextSibling);
+                }
             }
         }
 
@@ -532,12 +664,34 @@
                 return;
             }
 
+            // فاليديشن المبلغ المدفوع
+            const paidAmountValue = document.getElementById('paidAmount').value;
+            const paidAmount = parseFloat(paidAmountValue || '0');
+            if (paidAmount < 0) {
+                alert('المبلغ المدفوع لا يمكن أن يكون سالباً');
+                return;
+            }
+
+            // حساب الإجمالي (التحقق من العمولة فقط، بدون منع المبلغ الزائد)
+            try {
+                const feeRes = await fetch(`${API_BASE_URL}/fees?country=${encodeURIComponent(country)}&amount=${amount}`);
+                const feeData = feeRes.ok ? await feeRes.json() : { fee: 0 };
+                const fee = Number(feeData.fee || 0);
+                const total = amount + fee;
+                
+                // إزالة التحقق من تجاوز المبلغ المدفوع للإجمالي
+                // لأن هذا يسمح بإرجاع مبلغ للعميل عند الدفع الزائد
+            } catch (error) {
+                console.error('خطأ في حساب العمولة:', error);
+            }
+
             // عرض شاشة التأكيد مع جميع التفاصيل
             await showConfirmationModal();
         }
 
         async function showConfirmationModal() {
             const amount = parseFloat(document.getElementById('amount').value);
+            const paidAmount = parseFloat(document.getElementById('paidAmount').value || '0');
             const country = document.getElementById('country').value;
             const reason = document.getElementById('reason').value;
             const purpose = document.getElementById('purpose').value;
@@ -546,6 +700,8 @@
             const feeText = document.getElementById('fee').textContent;
             const rateText = document.getElementById('rate').textContent;
             const totalText = document.getElementById('total').textContent;
+            const paidText = document.getElementById('paid').textContent;
+            const balanceText = document.getElementById('balance').textContent;
             const convertedText = document.getElementById('converted').textContent;
             const ccyText = document.getElementById('ccy').textContent;
 
@@ -556,6 +712,8 @@
             document.getElementById('confirmAmount').textContent = amount.toFixed(2) + ' د.أ';
             document.getElementById('confirmFee').textContent = feeText + ' د.أ';
             document.getElementById('confirmTotal').textContent = totalText + ' د.أ';
+            document.getElementById('confirmPaid').textContent = paidText + ' د.أ';
+            document.getElementById('confirmBalance').textContent = balanceText + ' د.أ';
             document.getElementById('confirmRate').textContent = rateText;
             document.getElementById('confirmConverted').textContent = convertedText + ' ' + ccyText;
             document.getElementById('confirmReason').textContent = reason;
@@ -626,9 +784,14 @@
                 document.getElementById('crReason').textContent = r.reason;
                 document.getElementById('crPurpose').textContent = r.purpose;
                 
-                // حساب الإجمالي
+                // حساب الإجمالي والمبلغ المدفوع والباقي
                 const total = (r.amount || 0) + (r.fee || 0);
+                const paidAmount = parseFloat(document.getElementById('paidAmount').value || '0');
+                const balance = total - paidAmount;
+                
                 document.getElementById('crTotal').textContent = total.toFixed(2);
+                document.getElementById('crPaid').textContent = paidAmount.toFixed(2);
+                document.getElementById('crBalance').textContent = balance.toFixed(2);
                 
                 // احصل على سعر الصرف والعملة
                 try {
@@ -702,6 +865,8 @@
             }
 
             const total = (remittance.amount + remittance.fee).toFixed(2);
+            const paidAmount = parseFloat(document.getElementById('paidAmount')?.value || '0');
+            const balance = (remittance.amount + remittance.fee) - paidAmount;
 
             // الحصول على أسماء المرسل والمستفيد من المتغيرات المحلية
             const senderName = selectedSender ? `${selectedSender.nameAr} (${selectedSender.nameEn})` : 'غير محدد';
@@ -777,6 +942,14 @@
                             <strong style="color: #6c757d; font-size: 9px;">العمولة:</strong> 
                             <span style="font-size: 10px; color: #6c757d; font-weight: bold;">${remittance.fee.toFixed(2)} د.أ</span>
                         </div>
+                        <div style="margin-bottom: 3px; font-size: 8px;">
+                            <strong style="color: #6c757d; font-size: 9px;">المبلغ المدفوع:</strong> 
+                            <span style="font-size: 10px; color: #28a745; font-weight: bold;">${paidAmount.toFixed(2)} د.أ</span>
+                        </div>
+                        <div style="margin-bottom: 3px; font-size: 8px;">
+                            <strong style="color: #6c757d; font-size: 9px;">باقي للعميل:</strong> 
+                            <span style="font-size: 10px; color: #dc3545; font-weight: bold;">${balance.toFixed(2)} د.أ</span>
+                        </div>
                         <div style="font-size: 9px; background: #6c757d; color: white; padding: 3px; border-radius: 2px; text-align: center;">
                             <strong style="font-size: 10px;">الإجمالي: ${total} د.أ</strong>
                         </div>
@@ -841,6 +1014,14 @@
             updateFee();
             const countrySelect = document.getElementById('country');
             if (countrySelect) countrySelect.addEventListener('change', updateFee);
+            
+            // إخفاء نتائج البحث عند النقر خارجها
+            document.addEventListener('click', (e) => {
+                if (!e.target.closest('.results') && !e.target.closest('input[id$="Query"]')) {
+                    document.getElementById('senderResults').innerHTML = '';
+                    document.getElementById('beneficiaryResults').innerHTML = '';
+                }
+            });
         });
     </script>
 </head>
@@ -903,6 +1084,10 @@
                         <input id="amount" type="number" min="0" step="0.01" oninput="updateFee()">
                     </div>
                     <div class="form-group">
+                        <label>المبلغ المدفوع من العميل (د.أ)</label>
+                        <input id="paidAmount" type="number" min="0" step="0.01" oninput="updateFee()" placeholder="0.00">
+                    </div>
+                    <div class="form-group">
                         <label>سبب الحوالة</label>
                         <select id="reason">
                             <option value="نفقات عائلية">نفقات عائلية</option>
@@ -928,6 +1113,10 @@
                     <span style="margin: 0 10px;">·</span>
                     <span class="label">الإجمالي:</span> <span class="value"><span id="total">—</span> د.أ</span>
                     <span style="margin: 0 10px;">·</span>
+                    <span class="label">المبلغ المدفوع:</span> <span class="value"><span id="paid">—</span> د.أ</span>
+                    <span style="margin: 0 10px;">·</span>
+                    <span class="label">باقي للعميل:</span> <span class="value" style="color: #dc3545; font-weight: bold;"><span id="balance">—</span> د.أ</span>
+                    <span style="margin: 0 10px;">·</span>
                     <span class="label">مبلغ الحوالة بالعملة:</span> <span class="value"><span id="converted">—</span> <span id="ccy"></span></span>
                 </div>
                 <div style="margin-top: 20px;">
@@ -947,6 +1136,8 @@
                         <div style="background: #ffffff; padding: 8px; border-radius: 4px; border: 1px solid #dee2e6;"><strong style="color: #6c757d;">الدولة:</strong> <span id="crCountry" style="color: #6c757d;"></span></div>
                         <div style="background: #ffffff; padding: 8px; border-radius: 4px; border: 1px solid #dee2e6;"><strong style="color: #6c757d;">المبلغ:</strong> <span id="crAmount" style="color: #6c757d;"></span> د.أ</div>
                         <div style="background: #ffffff; padding: 8px; border-radius: 4px; border: 1px solid #dee2e6;"><strong style="color: #6c757d;">العمولة:</strong> <span id="crFee" style="color: #6c757d;"></span> د.أ</div>
+                        <div style="background: #ffffff; padding: 8px; border-radius: 4px; border: 1px solid #dee2e6;"><strong style="color: #6c757d;">المبلغ المدفوع:</strong> <span id="crPaid" style="color: #28a745; font-weight: bold;"></span> د.أ</div>
+                        <div style="background: #ffffff; padding: 8px; border-radius: 4px; border: 1px solid #dee2e6;"><strong style="color: #6c757d;">باقي للعميل:</strong> <span id="crBalance" style="color: #dc3545; font-weight: bold;"></span> د.أ</div>
                         <div style="background: #ffffff; padding: 8px; border-radius: 4px; border: 1px solid #dee2e6;"><strong style="color: #6c757d;">سعر الصرف:</strong> <span id="crExchangeRate" style="color: #6c757d;"></span></div>
                         <div style="background: #ffffff; padding: 8px; border-radius: 4px; border: 1px solid #dee2e6;"><strong style="color: #6c757d;">العملة:</strong> <span id="crCurrency" style="color: #6c757d;"></span></div>
                         <div style="background: #ffffff; padding: 8px; border-radius: 4px; border: 1px solid #dee2e6;"><strong style="color: #6c757d;">الإجمالي:</strong> <span id="crTotal" style="color: #6c757d;"></span> د.أ</div>
@@ -1022,6 +1213,14 @@
                                 <span style="color: #333; font-weight: bold; margin-right: 5px;" id="confirmTotal"></span>
                             </div>
                             <div>
+                                <span style="color: #6c757d; font-size: 14px;"><i class="fas fa-money-bill-wave"></i> المبلغ المدفوع:</span>
+                                <span style="color: #28a745; font-weight: bold; margin-right: 5px;" id="confirmPaid"></span>
+                            </div>
+                            <div>
+                                <span style="color: #6c757d; font-size: 14px;"><i class="fas fa-exclamation-triangle"></i> باقي للعميل:</span>
+                                <span style="color: #dc3545; font-weight: bold; margin-right: 5px;" id="confirmBalance"></span>
+                            </div>
+                            <div>
                                 <span style="color: #6c757d; font-size: 14px;"><i class="fas fa-exchange-alt"></i> سعر الصرف:</span>
                                 <span style="color: #333; font-weight: bold; margin-right: 5px;" id="confirmRate"></span>
                             </div>
@@ -1060,7 +1259,6 @@
         </div>
     </div>
 
-    <script src="js/app.js"></script>
 </body>
 </html>
 

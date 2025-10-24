@@ -38,8 +38,9 @@
             if (!reference || reference.trim() === '') {
                 return 'الرقم المرجعي مطلوب';
             }
-            if (!/^\d{13}$/.test(reference.trim())) {
-                return 'الرقم المرجعي يجب أن يكون 13 رقم';
+            // قبول تنسيق الرقم المرجعي: RM-YYYYMMDD-HHMMSS-XXX أو أي تنسيق يحتوي على RM-
+            if (!reference.trim().startsWith('RM-')) {
+                return 'تنسيق الرقم المرجعي غير صحيح. يجب أن يبدأ بـ RM-';
             }
             return null;
         }
@@ -201,7 +202,6 @@
                         <h3 style="color: #333; margin-bottom: 10px;"><i class="fas fa-info-circle"></i> معلومات الحوالة</h3>
                         <div><strong>الرقم المرجعي:</strong> <span class="pill">${r.reference}</span></div>
                         <div><strong>الحالة:</strong> <span class="badge-status ${statusBadgeClass}">${statusText}</span></div>
-                        <div class="muted"><strong>رقم الحوالة:</strong> #${r.id}</div>
                         <div><strong>الدولة:</strong> ${r.country}</div>
                         <div><strong>المبلغ:</strong> <b style="font-size: 1.2em;">${r.amount.toFixed(2)}</b> د.أ</div>
                         <div><strong>العمولة:</strong> ${r.fee.toFixed(2)} د.أ</div>
@@ -219,9 +219,6 @@
                             <div><strong>الاسم بالإنجليزي:</strong> ${r.sender?.nameEn ?? 'غير محدد'}</div>
                             <div><strong>الرقم الوطني:</strong> ${r.sender?.nationalId ?? 'غير محدد'}</div>
                             <div><strong>رقم الهاتف:</strong> ${r.sender?.phoneNumber ?? 'غير محدد'}</div>
-                            <div><strong>تاريخ الميلاد:</strong> ${r.sender?.birthDate ? new Date(r.sender.birthDate).toLocaleDateString('ar-SA') : 'غير محدد'}</div>
-                            <div><strong>العنوان:</strong> ${r.sender?.address ?? 'غير محدد'}</div>
-                            <div><strong>النوع:</strong> ${r.sender?.type === 'Sender' ? 'مرسل' : r.sender?.type === 'Beneficiary' ? 'مستفيد' : 'كلاهما'}</div>
                         </div>
                         
                         <div style="padding: 15px; background: white;">
@@ -230,9 +227,6 @@
                             <div><strong>الاسم بالإنجليزي:</strong> ${r.beneficiary?.nameEn ?? 'غير محدد'}</div>
                             <div><strong>الرقم الوطني:</strong> ${r.beneficiary?.nationalId ?? 'غير محدد'}</div>
                             <div><strong>رقم الهاتف:</strong> ${r.beneficiary?.phoneNumber ?? 'غير محدد'}</div>
-                            <div><strong>تاريخ الميلاد:</strong> ${r.beneficiary?.birthDate ? new Date(r.beneficiary.birthDate).toLocaleDateString('ar-SA') : 'غير محدد'}</div>
-                            <div><strong>العنوان:</strong> ${r.beneficiary?.address ?? 'غير محدد'}</div>
-                            <div><strong>النوع:</strong> ${r.beneficiary?.type === 'Sender' ? 'مرسل' : r.beneficiary?.type === 'Beneficiary' ? 'مستفيد' : 'كلاهما'}</div>
                         </div>
                     </div>
                 </div>
@@ -256,12 +250,16 @@
             const returnCard = document.getElementById('returnCard');
             const updateCard = document.getElementById('updateCard');
             
-            if (r && r.status === 'Payment pending') {
-                // إظهار البطاقات فقط إذا كانت الحوالة بانتظار الدفع
+            if (r && (r.status === 'Payment pending' || r.status === 'Pending Approval')) {
+                // إظهار البطاقات إذا كانت الحوالة بانتظار الدفع أو قيد الموافقة
                 if (returnCard) returnCard.style.display = 'block';
                 if (updateCard) updateCard.style.display = 'block';
+            } else if (r && r.status === 'Paid') {
+                // إخفاء البطاقات فقط إذا كانت الحوالة مدفوعة
+                if (returnCard) returnCard.style.display = 'none';
+                if (updateCard) updateCard.style.display = 'none';
             } else {
-                // إخفاء البطاقات إذا كانت الحوالة مدفوعة أو قيد الموافقة أو لا توجد بيانات
+                // إخفاء البطاقات إذا لم توجد بيانات
                 if (returnCard) returnCard.style.display = 'none';
                 if (updateCard) updateCard.style.display = 'none';
             }
@@ -274,18 +272,18 @@
                                 document.querySelector('button[onclick*="requestUpdate"]');
             
             if (status === 'Pending Approval') {
-                // إذا كانت الحوالة قيد الموافقة، غير زر الإرجاع
+                // إذا كانت الحوالة قيد الموافقة، أظهر رسالة ولكن اترك الأزرار نشطة للتعديل الإضافي
                 if (returnButton) {
-                    returnButton.innerHTML = '<i class="fas fa-check-circle"></i> تم إرسال الطلب';
-                    returnButton.className = 'btn btn-success';
-                    returnButton.disabled = true;
-                    returnButton.onclick = null;
+                    returnButton.innerHTML = '<i class="fas fa-clock"></i> قيد الموافقة - يمكن تعديل الطلب';
+                    returnButton.className = 'btn btn-warning';
+                    returnButton.disabled = false;
+                    // إبقاء onclick كما هو للسماح بالتعديل
                 }
                 if (updateButton) {
-                    updateButton.innerHTML = '<i class="fas fa-check-circle"></i> تم إرسال الطلب';
-                    updateButton.className = 'btn btn-success';
-                    updateButton.disabled = true;
-                    updateButton.onclick = null;
+                    updateButton.innerHTML = '<i class="fas fa-clock"></i> قيد الموافقة - يمكن تعديل الطلب';
+                    updateButton.className = 'btn btn-warning';
+                    updateButton.disabled = false;
+                    // إبقاء onclick كما هو للسماح بالتعديل
                 }
             } else if (status === 'Paid') {
                 // إذا كانت الحوالة مدفوعة، عطل الأزرار
